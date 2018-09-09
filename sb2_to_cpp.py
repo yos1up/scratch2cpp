@@ -76,13 +76,19 @@ def sb2_to_cpp(infilename_sb2):
             return str(obj)
 
 
-    def modify_identifier_name(name):
+    def modify_variable_name(name):
         '''
         variable name in Scratch is arbitrary,
         so there's need to change it so that
         C++ accepts.
         '''
         return 'var_' + name
+
+    def modify_function_name(name):
+        return 'func_' + name
+
+    def modify_argument_name(name):
+        return 'arg_' + name
 
 
     def random_identifier_name():
@@ -102,16 +108,28 @@ def sb2_to_cpp(infilename_sb2):
     def convert_script_list(script_list):
         '''
         script_list <list>: its element is block
+        returns:
+            snippet <str>: code
+            func_signature <list of str>:
+                (if not method) []
+                (if method) ['method_name', 'arg_name', 'arg_name', ...]
         '''
-        func_name = ''
+        func_signature = []
         snippet = ''
+        offset = 0
         if script_list[0][0] == 'whenGreenFlag':
-            func_name = 'main'
-            script_list.pop(0)
-        for block in script_list:
+            func_signature = ['main']
+            offset = 1
+        elif script_list[0][0] == 'procDef':
+            func_signature = [modify_function_name(script_list[0][1].split()[0])] \
+                            + [modify_argument_name(elem) for elem in script_list[0][2]]
+            offset = 1
+
+        for block in script_list[offset:]:
             snippet += convert_block(block)
 
-        return snippet, func_name
+        return snippet, func_signature
+
 
     def convert_block(block):
         '''
@@ -121,10 +139,10 @@ def sb2_to_cpp(infilename_sb2):
         if type(block) in [str, int, float]:
             return 'Var({!s})'.format(process_literal(block))
         com = block[0]
-        if com == 'setVar:to:':
-            return '{!s} = {!s};\n'.format(modify_identifier_name(block[1]), convert_block(block[2]))
+        if com == 'setVar:to:': # TODO: pass by value
+            return '{!s} = {!s};\n'.format(modify_variable_name(block[1]), convert_block(block[2]))
         elif com == 'readVariable':
-            return modify_identifier_name(block[1])
+            return modify_variable_name(block[1])
         elif com == 'doRepeat':
             counter_name = random_identifier_name()
             return 'for (int {0!s}=0;{0!s}<{1!s}.asNumber();{0!s}++){{\n'.format(counter_name, convert_block(block[1])) \
@@ -143,7 +161,7 @@ def sb2_to_cpp(infilename_sb2):
         elif com == '|':
             return '(' + convert_block(block[1]) + ' || ' + convert_block(block[2]) + ')'
         elif com == 'changeVar:by:':
-            return modify_identifier_name(block[1]) + '+=' + convert_block(block[2]) + ';\n'
+            return modify_variable_name(block[1]) + '+=' + convert_block(block[2]) + ';\n'
         elif com == 'answer':
             return name_of_answer_variable;
         elif com == 'rounded':
@@ -167,27 +185,34 @@ def sb2_to_cpp(infilename_sb2):
         elif com == 'say:':
             return 'cout << {!s} << endl;\n'.format(convert_block(block[1]))
         elif com == 'lineCountOfList:':
-            return 'Var({!s}.size())'.format(modify_identifier_name(block[1]))
+            return 'Var({!s}.size())'.format(modify_variable_name(block[1]))
         elif com == 'append:toList:': # TODO: allow out-of-range access 
-            return '{!s}.push_back({!s});\n'.format(modify_identifier_name(block[2]), convert_block(block[1]))
+            return '{!s}.push_back({!s});\n'.format(modify_variable_name(block[2]), convert_block(block[1]))
         elif com == 'getLine:ofList:': # TODO: allow out-of-range access 
-            return '{!s}[(int){!s}.asNumber()-1]'.format(modify_identifier_name(block[2]), convert_block(block[1]))
+            return '{!s}[(int){!s}.asNumber()-1]'.format(modify_variable_name(block[2]), convert_block(block[1]))
         elif com == 'setLine:ofList:to:':
-            return '{!s}[(int){!s}.asNumber()-1] = {!s};\n'.format(modify_identifier_name(block[2]), convert_block(block[1]), convert_block(block[3]))
+            return '{!s}[(int){!s}.asNumber()-1] = {!s};\n'.format(modify_variable_name(block[2]), convert_block(block[1]), convert_block(block[3]))
         elif com == 'list:contains:':
-            return '(find({0!s}.begin(), {0!s}.end(), {1!s}) != {0!s}.end())'.format(modify_identifier_name(block[1]), convert_block(block[2]))
+            return '(find({0!s}.begin(), {0!s}.end(), {1!s}) != {0!s}.end())'.format(modify_variable_name(block[1]), convert_block(block[2]))
         elif com == 'deleteLine:ofList:':
             if block[1] in ['all']:
-                return '{!s}.clear();\n'.format(modify_identifier_name(block[2]))
+                return '{!s}.clear();\n'.format(modify_variable_name(block[2]))
             else:
                 pass
+        elif com == 'stringLength:':
+            return 'Var(' + convert_block(block[1]) + '.asString().size())'
         elif com == 'letter:of:': # TODO: allow out-of-range access 
             return 'Var(' + convert_block(block[2]) + '.asString().substr((int)' + convert_block(block[1]) + '.asNumber()-1, 1))'
+        elif com == 'getParam':
+            return modify_argument_name(block[1])
+        elif com == 'call':
+            func_name = block[1].split()[0]
+            return '{!s}({!s});\n'.format(modify_function_name(func_name), ','.join([convert_block(block) for block in block[2:]]))
         elif com == 'stopScripts':
             return 'return 0;\n'
         else:
             unknown_command_set.add(com)
-            return '/* [unknown] ' + com + ' */'
+            return '/* [unknown] ' + json.dumps(block) + ' */'
 
 
     # convert to cpp
@@ -282,26 +307,39 @@ istream& operator >> (istream& is, Var& p){
     name_of_answer_variable = 'buf_answer'
     cpp_source += 'Var {!s}; // for "answer"\n\n'.format(name_of_answer_variable)
 
-    cpp_source += '// ==================== Scripts ====================\n'
+    cpp_source += '// ============================= Scripts =============================\n'
 
 
-
+    # declare variables (Var)
     for var in scr_variables:
-        cpp_source += 'Var {!s}({!s});\n'.format(modify_identifier_name(var['name']), process_literal(var['value']))
+        cpp_source += 'Var {!s}({!s});\n'.format(modify_variable_name(var['name']), process_literal(var['value']))
     if scr_variables:
         cpp_source += '\n'
 
+    # declare variables (vector<Var>)
     for li in scr_lists:
-        cpp_source += 'vector<Var> {!s} = {{'.format(modify_identifier_name(li['listName']))
+        cpp_source += 'vector<Var> {!s} = {{'.format(modify_variable_name(li['listName']))
         cpp_source += ', '.join(['Var({!s})'.format(process_literal(item)) for item in li['contents']])
         cpp_source += '};\n'
     if scr_lists:
         cpp_source += '\n'
 
-
+    # define functions (prototype)
     for script in scr_scripts:
-        snippet, func_name = convert_script_list(script[2])
-        cpp_source += 'int main(){\n' if func_name == 'main' else 'int {!s}(){{\n'.format(random_identifier_name()) 
+        snippet, func_signature = convert_script_list(script[2])
+        if not func_signature: # 無名のコードブロックの場合
+            func_signature = [random_identifier_name()] # ランダムな名前の0変数関数として扱う．
+        cpp_source += 'int {!s}({!s});\n'.format(func_signature[0], ', '.join(['Var {!s}'.format(v) for v in func_signature[1:]])) 
+    cpp_source += '\n'
+
+
+    # define functions (contents)
+    for script in scr_scripts:
+        snippet, func_signature = convert_script_list(script[2])
+        if not func_signature: # 無名のコードブロックの場合
+            func_signature = [random_identifier_name()] # ランダムな名前の0変数関数として扱う．
+
+        cpp_source += 'int {!s}({!s}){{\n'.format(func_signature[0], ', '.join(['Var {!s}'.format(v) for v in func_signature[1:]])) 
         cpp_source += indent(snippet, 4)
         cpp_source += '}\n\n'
 
