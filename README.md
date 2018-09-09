@@ -12,7 +12,7 @@ git clone https://github.com/yos1up/scratch2cpp.git
 
 * python3
 
-## How to participate in programming contests
+## How to participate in programming contests in Scratch
 
 1. Create a Scratch project which solves the problem.
 
@@ -20,7 +20,7 @@ git clone https://github.com/yos1up/scratch2cpp.git
     
     * use `ask ... and wait` block to get a value from standard input. (The value will be stored in `answer` )
     
-    * use `say ...` block to output a value to standard output.
+    * use `say ...` block to output a line to standard output.
     
     * use `stop ...` block to terminate your program in the middle of the script.
 
