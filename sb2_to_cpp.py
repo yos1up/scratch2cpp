@@ -3,6 +3,7 @@ import os, sys
 import zipfile
 import json
 import numpy as np
+import logging
 
 parser = argparse.ArgumentParser(usage='convert .sb2 to .cpp')
 parser.add_argument('infile', help='input file name (.sb2)')
@@ -25,18 +26,61 @@ if args.jsonfile != "":
 
 # extract information needed for conversion
 jsonobj = json.loads(jsonstr)
-print('----------variables----------')
+logging.info('----------variables----------')
 scr_variables = jsonobj['variables'] if 'variables' in jsonobj else []
 for var in scr_variables:
-    print(var['name'], var['value'], var['isPersistent'])
-print('----------lists----------')
+    logging.info(var['name'], var['value'], var['isPersistent'])
+logging.info('----------lists----------')
 scr_lists = jsonobj['lists'] if 'lists' in jsonobj else []
 for li in scr_lists:
-    print(li['listName'], li['contents'], li['isPersistent'])
-print('----------scripts----------')
+    logging.info(li['listName'], li['contents'], li['isPersistent'])
+logging.info('----------scripts----------')
 scr_scripts = jsonobj['children'][0]['scripts']
 for script in scr_scripts:
-    print(script[2])
+    logging.info(script[2])
+
+# for reporting
+unknown_command_set = set()
+
+
+
+def try_int(s):
+    try:
+        return int(s)
+    except:
+        return None
+
+def try_float(s):
+    try:
+        return float(s)
+    except:
+        return None
+
+def process_literal(obj):
+    '''
+    obj <str/int/float>
+    returns <str>
+    if [obj] is interpretable as integer, return the integer stringified.
+    else if [obj] is interpretable as numerical value, return the value stringified.
+    if not interpretable, return the string double-quoted.
+    '''
+    if type(obj) == str:
+        val = try_int(obj)
+        if val is not None: return str(val)
+        val = try_float(obj)
+        if val is not None: return str(val)
+        return '"' + obj + '"'
+    else:
+        return str(obj)
+
+
+def modify_identifier_name(name):
+    '''
+    variable name in Scratch is arbitrary,
+    so there's need to change it so that
+    C++ accepts.
+    '''
+    return 'var_' + name
 
 
 def random_identifier_name():
@@ -72,15 +116,16 @@ def convert_block(block):
     block: ['コマンド名', 引数...]
     returns <str>: スニペット．
     '''
-    if type(block) in [str, int]: return '"' + str(block) + '"'
+    if type(block) in [str, int, float]:
+        return 'Var({!s})'.format(process_literal(block))
     com = block[0]
     if com == 'setVar:to:':
-        return '{!s} = {!s};\n'.format(block[1], convert_block(block[2]))
+        return '{!s} = {!s};\n'.format(modify_identifier_name(block[1]), convert_block(block[2]))
     elif com == 'readVariable':
-        return str(block[1])
+        return modify_identifier_name(block[1])
     elif com == 'doRepeat':
         counter_name = random_identifier_name()
-        return 'for (int {0!s}=0;{0!s}<{1!s};{0!s}++){{\n'.format(counter_name, convert_block(block[1])) \
+        return 'for (int {0!s}=0;{0!s}<{1!s}.asNumber();{0!s}++){{\n'.format(counter_name, convert_block(block[1])) \
                 + indent(convert_script_list(block[2])[0], 4) \
                 + '}\n'
     elif com == 'doForever':
@@ -90,17 +135,21 @@ def convert_block(block):
     elif com in ['+','-','*','/','%','>','<']:
         return '(' + convert_block(block[1]) + com + convert_block(block[2]) + ')'
     elif com == '=':
-        return '(' + convert_block(block[1]) + '==' + convert_block(block[2]) + ')'
+        return '(' + convert_block(block[1]) + ' == ' + convert_block(block[2]) + ')'
+    elif com == '&':
+        return '(' + convert_block(block[1]) + ' && ' + convert_block(block[2]) + ')'
+    elif com == '|':
+        return '(' + convert_block(block[1]) + ' || ' + convert_block(block[2]) + ')'
     elif com == 'changeVar:by:':
-        return block[1] + '+=' + convert_block(block[2]) + ';\n'
+        return modify_identifier_name(block[1]) + '+=' + convert_block(block[2]) + ';\n'
     elif com == 'answer':
         return name_of_answer_variable;
     elif com == 'rounded':
-        return 'rounded(' + convert_block(block[1]) + ')'
+        return 'Var(round(' + convert_block(block[1]) + '.asNumber()))'
     elif com == 'computeFunction:of:':
-        return block[1] + '(' + convert_block(block[2]) + ')'
+        return block[1] + '(' + convert_block(block[2]) + '.asNumber())'
     elif com == 'concatenate:with:':
-        return '(' + convert_block(block[1]) + '+' + convert_block(block[2]) + ')'
+        return 'Var(' + convert_block(block[1]) + '.asString() + ' + convert_block(block[2]) + '.asString())'
     elif com == 'doIf':
         return 'if ({!s}){{\n'.format(convert_block(block[1])) \
                 + indent(convert_script_list(block[2])[0], 4) \
@@ -115,71 +164,159 @@ def convert_block(block):
         return 'cin >> {!s};\n'.format(name_of_answer_variable)
     elif com == 'say:':
         return 'cout << {!s} << endl;\n'.format(convert_block(block[1]))
-    elif com == 'append:toList:':
-        return '{!s}.push_back({!s});\n'.format(block[2], convert_block(block[1]))
-    elif com == 'getLine:ofList:':
-        return '{!s}[{!s}]'.format(block[2], convert_block(block[1]))
+    elif com == 'append:toList:': # TODO: out-of-range access 
+        return '{!s}.push_back({!s});\n'.format(modify_identifier_name(block[2]), convert_block(block[1]))
+    elif com == 'getLine:ofList:': # TODO: out-of-range access 
+        return '{!s}[(int){!s}.asNumber()]'.format(modify_identifier_name(block[2]), convert_block(block[1]))
     elif com == 'setLine:ofList:to:':
-        return '{!s}[{!s}] = {!s};\n'.format(block[2], convert_block(block[1]), convert_block(block[3]))
+        return '{!s}[(int){!s}.asNumber()] = {!s};\n'.format(modify_identifier_name(block[2]), convert_block(block[1]), convert_block(block[3]))
     elif com == 'list:contains:':
-        return 'contains({!s}, {!s})'.format(block[1], convert_block(block[2]))
+        return '(find({0!s}.begin(), {0!s}.end(), {1!s}) != {0!s}.end())'.format(modify_identifier_name(block[1]), convert_block(block[2]))
     elif com == 'deleteLine:ofList:':
         if block[1] in ['all']:
-            return '{!s}.clear();\n'.format(block[2])
+            return '{!s}.clear();\n'.format(modify_identifier_name(block[2]))
         else:
             pass
     elif com == 'letter:of:':
-        return convert_block(block[2]) + '.substr(' + convert_block(block[1]) + '-1, 1)';
+        return 'Var(' + convert_block(block[2]) + '.asString().substr((int)' + convert_block(block[1]) + '.asNumber()-1, 1))'
     elif com == 'stopScripts':
-        return 'return;\n'
+        return 'return 0;\n'
     else:
-        print('!!!' + com + '!!!')
-    return ''
+        logging.warning('!!! WARNING: unknown command: ' + com + ' !!!')
+        unknown_command_set.add(com)
+        return '/* [unknown] ' + com + ' */'
 
 
 # convert to cpp
-cpp_source = '/* converted by sb2_to_cpp */\n#include <bits/stdc++.h>\nusing namespace std;\n\n'
+cpp_source = '/* converted by sb2_to_cpp */\n#include <bits/stdc++.h>\n#define debug cerr << "--" << __LINE__ << "--" << endl\nusing namespace std;\n\n'
 
 cpp_source += '''
-class variable{
-    
+class Var{
+public:
+    string sval;
+    double dval;
+    enum VarType {STRING = 0, NUMBER = 1};
+    VarType type;
+    enum NumericState {UNKNOWN = -1, STRINGY = 0, NUMERIC = 1};
+    mutable NumericState numericState;
 
+    Var(){sval = ""; type = STRING; numericState = STRINGY;}
+    Var(string s){
+        sval = s; type = STRING; numericState = UNKNOWN;
+    }
+    Var(double d){dval = d; type = NUMBER; numericState = NUMERIC;}
 
-
+    static bool isNumericString(const string &s) { // very costly. (> 0.5 ms/call)
+        regex re ("^[-+]?[0-9]*\\\\.?[0-9]+([eE][-+]?[0-9]+)?$");
+        return regex_match(s, re);
+        // TODO: In Scratch '000' is regarded as non-numeric.
+    }
+    bool isNumeric() const{
+        if (type == NUMBER) return true;
+        if (numericState != UNKNOWN) return numericState == NUMERIC;
+        bool numeric = isNumericString(sval);
+        numericState = (numeric) ? NUMERIC : STRINGY;
+        return numeric;
+    }
+    double asNumber() const{
+        if (type == NUMBER) return dval;
+        return (isNumeric()) ? atof(sval.c_str()) : 0.0;
+    }
+    string asString() const{
+        if (type == STRING) return sval;
+        return to_string(dval);
+    }
+    Var operator+(const Var &y) const{
+        return Var(this->asNumber() + y.asNumber());
+    }
+    Var operator+=(const Var &y){
+        *this = *this + y;
+        return *this;
+    }
+    Var operator-(const Var &y) const{
+        return Var(this->asNumber() - y.asNumber());
+    }
+    Var operator*(const Var &y) const{
+        return Var(this->asNumber() * y.asNumber());
+    }
+    Var operator/(const Var &y) const{
+        return Var(this->asNumber() / y.asNumber());
+    }
+    Var operator%(const Var &y) const{
+        return Var(fmod(this->asNumber(), y.asNumber()));
+    }
+    bool operator<(const Var &y) const{
+        if (this->isNumeric() && y.isNumeric()){
+            return this->asNumber() < y.asNumber();
+        }// compare as number if both can be interpreted as numeric
+        return this->asString() < y.asString();
+    }
+    bool operator>(const Var &y) const{
+        return y < *this;
+    }
+    bool operator==(const Var &y) const{
+        if (this->isNumeric() && y.isNumeric()){
+            return this->asNumber() == y.asNumber();
+        }// compare as numeric if both are numeric
+        return this->asString() == y.asString();
+    }
+    friend ostream& operator << (ostream& os, const Var& p);
+    friend istream& operator >> (istream& is, const Var& p);
 };
-// overload every operator
-// cin, cout
-
-// every math function
+ostream& operator << (ostream& os, const Var& p){
+    if (p.isNumeric()) os << p.asNumber();
+    else os << p.asString();
+    return os;
+}
+istream& operator >> (istream& is, Var& p){
+    string s; is >> s; p = Var(s);
+    return is;
+}
 
 '''
+name_of_answer_variable = 'buf_answer'
+cpp_source += 'Var {!s}; // for "answer"\n\n'.format(name_of_answer_variable)
+
+cpp_source += '// ==================== Scripts ====================\n'
+
+
 
 for var in scr_variables:
-    cpp_source += 'string {!s} = "{!s}";\n'.format(var['name'], var['value'])
+    cpp_source += 'Var {!s}({!s});\n'.format(modify_identifier_name(var['name']), process_literal(var['value']))
 if scr_variables:
     cpp_source += '\n'
 
 for li in scr_lists:
-    cpp_source += 'vector<string> {!s} = {{'.format(li['listName'])
-    cpp_source += ', '.join(list(map(str, li['contents'])))
+    cpp_source += 'vector<Var> {!s} = {{'.format(modify_identifier_name(li['listName']))
+    cpp_source += ', '.join(['Var({!s})'.format(process_literal(item)) for item in li['contents']])
     cpp_source += '};\n'
 if scr_lists:
     cpp_source += '\n'
 
 
-name_of_answer_variable = '_buf_answer'
-cpp_source += 'string {!s}; // for "answer"\n\n'.format(name_of_answer_variable)
-# TODO: escape reserved words of c++s
+
 
 
 for script in scr_scripts:
     snippet, func_name = convert_script_list(script[2])
-    cpp_source += 'int main(){\n' if func_name == 'main' else 'void {!s}(){{\n'.format(random_identifier_name()) 
+    cpp_source += 'int main(){\n' if func_name == 'main' else 'int {!s}(){{\n'.format(random_identifier_name()) 
     cpp_source += indent(snippet, 4)
     cpp_source += '}\n\n'
 
 
-print('----------.cpp source----------')
-print(cpp_source)
+logging.info('----------.cpp source----------')
+logging.info(cpp_source)
+logging.info('===============================')
+
+with open(args.outfile, 'w') as f:
+    f.write(cpp_source)
+
+if unknown_command_set:
+    print('.cpp source is output to', args.outfile)
+    logging.warning('the following commands are not converted:')
+    for com in unknown_command_set:
+        logging.warning('    ' + com)
+else:
+    print('.cpp source is successfully output to', args.outfile)
 
 
