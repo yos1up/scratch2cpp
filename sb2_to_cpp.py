@@ -20,6 +20,7 @@ def sb2_to_cpp(infilename_sb2):
     with zipfile.ZipFile(infilename_sb2) as myzip:
         with myzip.open('project.json') as myfile:
             json_source = myfile.read().decode(encoding='utf-8')
+            logging.info(json_source)
 
 
     # extract information needed for conversion
@@ -33,7 +34,10 @@ def sb2_to_cpp(infilename_sb2):
     for li in scr_lists:
         logging.info(li['listName'], li['contents'], li['isPersistent'])
     logging.info('----------scripts----------')
-    scr_scripts = jsonobj['children'][0]['scripts']
+    scr_scripts = []
+    for element in jsonobj['children']:
+        if 'scripts' in element:
+            scr_scripts += element['scripts']
     for script in scr_scripts:
         logging.info(script[2])
 
@@ -162,12 +166,14 @@ def sb2_to_cpp(infilename_sb2):
             return 'cin >> {!s};\n'.format(name_of_answer_variable)
         elif com == 'say:':
             return 'cout << {!s} << endl;\n'.format(convert_block(block[1]))
-        elif com == 'append:toList:': # TODO: out-of-range access 
+        elif com == 'lineCountOfList:':
+            return 'Var({!s}.size())'.format(modify_identifier_name(block[1]))
+        elif com == 'append:toList:': # TODO: allow out-of-range access 
             return '{!s}.push_back({!s});\n'.format(modify_identifier_name(block[2]), convert_block(block[1]))
-        elif com == 'getLine:ofList:': # TODO: out-of-range access 
-            return '{!s}[(int){!s}.asNumber()]'.format(modify_identifier_name(block[2]), convert_block(block[1]))
+        elif com == 'getLine:ofList:': # TODO: allow out-of-range access 
+            return '{!s}[(int){!s}.asNumber()-1]'.format(modify_identifier_name(block[2]), convert_block(block[1]))
         elif com == 'setLine:ofList:to:':
-            return '{!s}[(int){!s}.asNumber()] = {!s};\n'.format(modify_identifier_name(block[2]), convert_block(block[1]), convert_block(block[3]))
+            return '{!s}[(int){!s}.asNumber()-1] = {!s};\n'.format(modify_identifier_name(block[2]), convert_block(block[1]), convert_block(block[3]))
         elif com == 'list:contains:':
             return '(find({0!s}.begin(), {0!s}.end(), {1!s}) != {0!s}.end())'.format(modify_identifier_name(block[1]), convert_block(block[2]))
         elif com == 'deleteLine:ofList:':
@@ -175,12 +181,11 @@ def sb2_to_cpp(infilename_sb2):
                 return '{!s}.clear();\n'.format(modify_identifier_name(block[2]))
             else:
                 pass
-        elif com == 'letter:of:':
+        elif com == 'letter:of:': # TODO: allow out-of-range access 
             return 'Var(' + convert_block(block[2]) + '.asString().substr((int)' + convert_block(block[1]) + '.asNumber()-1, 1))'
         elif com == 'stopScripts':
             return 'return 0;\n'
         else:
-            logging.warning('!!! WARNING: unknown command: ' + com + ' !!!')
             unknown_command_set.add(com)
             return '/* [unknown] ' + com + ' */'
 
@@ -208,7 +213,9 @@ public:
     static bool isNumericString(const string &s) { // very costly. (> 0.5 ms/call)
         regex re ("^[-+]?[0-9]*\\\\.?[0-9]+([eE][-+]?[0-9]+)?$");
         return regex_match(s, re);
-        // TODO: In Scratch '000' is regarded as non-numeric.
+        // TODO: In Scratch '000' is regarded as non-numeric (but here regarded as numeric)
+        // TODO: >4000 reading from stdin only costs longer than 2sec. (typical time limit).
+        //       It is necessary to speed up this func...!
     }
     bool isNumeric() const{
         if (type == NUMBER) return true;
@@ -223,6 +230,7 @@ public:
     }
     string asString() const{
         if (type == STRING) return sval;
+        if (fabs(round(dval) - dval) < 1e-10) return to_string((int)dval);
         return to_string(dval);
     }
     Var operator+(const Var &y) const{
@@ -263,8 +271,7 @@ public:
     friend istream& operator >> (istream& is, const Var& p);
 };
 ostream& operator << (ostream& os, const Var& p){
-    if (p.isNumeric()) os << p.asNumber();
-    else os << p.asString();
+    os << p.asString();
     return os;
 }
 istream& operator >> (istream& is, Var& p){
@@ -320,9 +327,10 @@ if __name__ == '__main__':
     cpp_source, json_source, error_message = sb2_to_cpp(args.infile)
 
     if error_message != '':
+        print('conversion unsuccessful... (output to {!s})'.format(args.outfile))
         print(error_message)
     else:
-        print('conversion successful')
+        print('conversion successful (output to {!s})'.format(args.outfile))
 
     if args.jsonfile != '':
         with open(args.jsonfile, 'w') as f:
