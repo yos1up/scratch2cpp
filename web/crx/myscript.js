@@ -6,12 +6,23 @@ inputElem.style.display = 'none';
 document.body.appendChild(inputElem);
 
 //fetch language setting
-var buttonText = 'Open Scratch project';
-if (document.title.indexOf('提出') >= 0) buttonText = 'Scratch プロジェクトをひらく';
+var lang = 'en';
+if (document.body.innerText.indexOf('言語') >= 0) lang = 'ja';
+
+// create a button to navigate to Scratch online editor
+var div = document.getElementsByClassName("col-sm-3 editor-buttons")[0];
+if (typeof div !== 'undefined' && div !== null){
+    var buttonText = {'ja':'Scratch オンラインエディタ', 'en':'Scratch online editor'}[lang];
+    div.insertAdjacentHTML('beforeend', `<p><button type="button" class="btn btn-default btn-sm " style="background-color: orange; color: white" onclick="window.open('https://scratch.mit.edu/projects/editor/');">` + buttonText + `</button></p>`);
+}
 
 // create and place the button for upload
 var div = document.getElementsByClassName("col-sm-3 editor-buttons")[0];
-div.insertAdjacentHTML('beforeend', `<p><button id="btn-upload-scratch-project" type="button" class="btn btn-default btn-sm " style="background-color: orange; color: white">` + buttonText + `</button></p>`);
+if (typeof div !== 'undefined' && div !== null){
+    var buttonText = {'ja':'Scratch プロジェクトをロード', 'en':'Load Scratch project'}[lang];
+    div.insertAdjacentHTML('beforeend', `<p><button id="btn-upload-scratch-project" type="button" class="btn btn-default btn-sm " style="background-color: orange; color: white">` + buttonText + `</button></p>`);
+}
+
 
 // button for upload => trigger <input type='file'>
 document.getElementById("btn-upload-scratch-project").onclick = function(){
