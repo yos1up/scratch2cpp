@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+</head>
+<script type="text/javascript" src="Stuk-jszip-9fb481a/dist/jszip.js"></script>
+<script type="text/javascript" src="Stuk-jszip-9fb481a/dist/jszip.min.js"></script>
+<script type="text/javascript">
+	function init(){
+		document.getElementById("upload").addEventListener("change",function(e){ //作業状態の読み込み
+			var files = e.target.files;
+			if (typeof files[0] !== 'undefined'){
+				var zip = new JSZip();
+				zip.loadAsync(files[0]).then(
+					function(zip) {
+				    	// process ZIP file content here
+				    	if (typeof zip.files['project.json'] !== 'undefined'){
+					    	zip.files['project.json'].async('string').then(
+					    		function (fileData) {
+							    	document.getElementById("ta1").value = fileData   
+							    }
+					    	);
+					    }else{
+					    	alert("Not a valid .sb2 file (project.json not found)");
+					    }
+			   		}, function() {alert("Not a valid .sb2 file (unzip failed)");});
+			}		
+		});
+	}
+</script>
+<body onload="init();">
+<input type="file" id="upload"> <br>
+<textarea id="ta1" rows="30" cols="100" wrap=""></textarea>
+</body>
+</html>
