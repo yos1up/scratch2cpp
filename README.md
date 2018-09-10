@@ -9,7 +9,7 @@ for Scratchers who want to participate in programming contests
 2. AtCoder に Scratch で参加できるようになる Chrome 拡張． （1 を JavaScript に移植したものが含まれています．）
 
 
-1 については，以下の記述をご覧ください． 2 については， `web/crx` の階層の README をご覧ください．
+1 については，以下の記述をご覧ください． 2 については， `./web/crx/` の階層の README をご覧ください．
 
 ## Installation
 
@@ -27,15 +27,15 @@ git clone https://github.com/yos1up/scratch2cpp.git
 
     * use `when [Flag] clicked` block to specify the entry point.
     
-    * use `ask ... and wait` block to get a value from standard input. (The value will be stored in `answer` )
+    * use `ask ... and wait` block to get a value from standard input. (The value will be stored in `answer`.) ( The asking message is arbitrary. )
     
     * use `say ...` block to output a line to standard output.
     
-    * use `stop ...` block to terminate your program in the middle of the script.
+    * use `stop ...` block to terminate your program in the middle of the script. (The option is arbitrary. )
 
 2. Download your project as a .sb2 file.
 
 3. `python sb2_to_cpp.py scratch_project_file.sb2 -o output_file.cpp`
 
-4. submit the C++ source in `output_file.cpp`.
+4. submit the content of `output_file.cpp`.
 
