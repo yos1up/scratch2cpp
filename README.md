@@ -2,6 +2,15 @@
 
 for Scratchers who want to participate in programming contests
 
+ここには，以下の 2 つのものがあります：
+
+1. ローカルで動作する，コード変換ツール． Scratch プロジェクトファイル (.sb2) ファイルを C++ ソース (.cpp) に変換できます． （Python3 製です．）
+
+2. AtCoder に Scratch で参加できるようになる Chrome 拡張． （1 を JavaScript に移植したものが含まれています．）
+
+
+1 については，以下の記述をご覧ください． 2 については， `web/crx` の階層の README をご覧ください．
+
 ## Installation
 
 ```
@@ -30,6 +39,3 @@ git clone https://github.com/yos1up/scratch2cpp.git
 
 4. submit the C++ source in `output_file.cpp`.
 
-## Limitation
-
-Many types of blocks are not implementated yet!!
