@@ -1,6 +1,6 @@
 {
-    "name": "Hello Extensions",
-    "description" : "Base Level Extension",
+    "name": "Scratch to C++ [AtCoder]",
+    "description" : "for Scratchers who want to compete in AtCoder",
     "version": "1.0",
     "manifest_version": 2,
     "browser_action": {

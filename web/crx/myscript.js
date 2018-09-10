@@ -14,8 +14,16 @@ document.getElementById("upload_scratch_project").addEventListener("change",func
                     if (typeof zip.files['project.json'] !== 'undefined'){
                         zip.files['project.json'].async('string').then(
                             function (fileData) {
+                                // convert project.json -> cpp
+                                var rslt = projectJsonToCpp(fileData);
+                                var cppSource = rslt[0];
+                                var errorMessage = rslt[1];
+                                if (errorMessage != ''){
+                                    alert(errorMessage);
+                                }
+
                                 // paste to plain editor
-                                document.getElementsByClassName("form-control plain-textarea")[0].value = fileData;
+                                document.getElementsByClassName("form-control plain-textarea")[0].value = cppSource;
 
                                 { // paste to rich editor
                                     // execute this command in web browser
@@ -27,18 +35,19 @@ document.getElementById("upload_scratch_project").addEventListener("change",func
                                         elem.style.display = 'none';
                                         document.body.appendChild(elem);
                                     }
+                                    elem.value = cppSource;
 
-                                    // convert project.json -> cpp
-                                    elem.value = projectJsonToCpp(fileData);
 
                                     // paste to rich editor
                                     var script = document.createElement("script");
                                     script.textContent = '$(".editor").data("editor").doc.setValue(document.getElementById("converted_source").value);';
                                     document.body.appendChild(script);
 
-                                    // force C++ language 
-                                    // TODO
                                 }
+
+                                // select C++ language 
+                                // TODO
+
                             }
                         );
                     }else{
