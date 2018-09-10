@@ -1,7 +1,25 @@
-var div = document.getElementsByClassName("control-label col-sm-2")[0];
-div.insertAdjacentHTML('beforebegin','<div class="form-group "><label class="control-label col-sm-2" for="select-task">Load Scratch Project</label><div class="col-sm-5"><input type="file" id="upload_scratch_project"></div></div>');
+// create <input type='file'> (hidden)
+var inputElem = document.createElement("input");
+inputElem.type = 'file';
+inputElem.id = 'file-upload-scratch-project';
+inputElem.style.display = 'none';
+document.body.appendChild(inputElem);
 
-document.getElementById("upload_scratch_project").addEventListener("change",function(e){
+//fetch language setting
+var buttonText = 'Open Scratch project';
+if (document.title.indexOf('提出') >= 0) buttonText = 'Scratch プロジェクトをひらく';
+
+// create and place the button for upload
+var div = document.getElementsByClassName("col-sm-3 editor-buttons")[0];
+div.insertAdjacentHTML('beforeend', `<p><button id="btn-upload-scratch-project" type="button" class="btn btn-default btn-sm " style="background-color: orange; color: white">` + buttonText + `</button></p>`);
+
+// button for upload => trigger <input type='file'>
+document.getElementById("btn-upload-scratch-project").onclick = function(){
+    document.getElementById("file-upload-scratch-project").click();
+};
+
+// when file is selected
+document.getElementById("file-upload-scratch-project").addEventListener("change",function(e){
     var files = e.target.files;
     if (typeof files[0] !== 'undefined'){
         var zip = new JSZip();
@@ -10,7 +28,6 @@ document.getElementById("upload_scratch_project").addEventListener("change",func
         }else{
             zip.loadAsync(files[0]).then(
                 function(zip) {
-                    // process ZIP file content here
                     if (typeof zip.files['project.json'] !== 'undefined'){
                         zip.files['project.json'].async('string').then(
                             function (fileData) {
