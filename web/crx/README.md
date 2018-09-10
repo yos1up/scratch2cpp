@@ -5,13 +5,13 @@
 
 1. Clone or download this directory
 
-2. Launch Google Chrome and Window -> Extension
+2. Launch Google Chrome and go to Window -> Extensions
 
 3. Turn on "Developper Mode"
 
-4. "Unpacked Extension" -> select this ( `crx` ) directory
+4. "Load Unpacked Extension" -> select this directory ( `crx` ) 
 
-After installation (and activation), go to AtCoder beta.
+After installation (and activation), go to AtCoder **beta** (https://beta.atcoder.jp/).
 There will be orange buttons in submit pages and problem pages.
 
 [img of screenshot]
