@@ -430,7 +430,7 @@ double randUniform(double x, double y){
     for script in scr_scripts:
         snippet, func_signature = convert_script_list(script[2])
         if not func_signature: # 無名のコードブロックの場合
-            func_signature = [random_identifier_name()] # ランダムな名前の0変数関数として扱う．
+            continue # func_signature = [random_identifier_name()] # ランダムな名前の0変数関数として扱う．
         cpp_source += 'int {!s}({!s});\n'.format(func_signature[0], ', '.join(['Var {!s}'.format(v) for v in func_signature[1:]])) 
     cpp_source += '\n'
 
@@ -439,7 +439,7 @@ double randUniform(double x, double y){
     for script in scr_scripts:
         snippet, func_signature = convert_script_list(script[2])
         if not func_signature: # 無名のコードブロックの場合
-            func_signature = [random_identifier_name()] # ランダムな名前の0変数関数として扱う．
+            continue # func_signature = [random_identifier_name()] # ランダムな名前の0変数関数として扱う．
 
         cpp_source += 'int {!s}({!s}){{\n'.format(func_signature[0], ', '.join(['Var {!s}'.format(v) for v in func_signature[1:]])) 
         cpp_source += indent(snippet, 4)
