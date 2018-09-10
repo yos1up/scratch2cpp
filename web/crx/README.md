@@ -14,7 +14,7 @@
 After installation (and activation), go to AtCoder **beta** (https://beta.atcoder.jp/).
 There will be orange buttons in submit pages and problem pages.
 
-<img src="scrshot.png" alt="screen shot" title="screen shot" width=70% height=70%>
+<p align="center"><img src="scrshot.png" alt="screen shot" title="screen shot" width="70%" height="70%"></p>
 
 ## Usage
 
