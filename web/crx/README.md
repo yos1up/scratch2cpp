@@ -18,11 +18,11 @@ There will be orange buttons in submit pages and problem pages.
 
 ## Usage
 
-1. Press `Scratch online editor` button to open the online editor, and create your solution.
+1. Press orange `Scratch online editor` button to open the online editor, and create your solution.
 
 2. If your solution is ready, download your Scratch project to a local file. (File -> Download to your computer)
 
-3. Return to AtCoder and press `Load Scratch project` button. Then select your Scratch project file.
+3. Return to AtCoder and press orange `Load Scratch project` button. Then select your Scratch project file.
 
 4. Your Scratch project file will be converted to C++ source, and displayed in the solution form.
 
