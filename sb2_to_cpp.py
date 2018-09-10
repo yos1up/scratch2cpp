@@ -147,7 +147,6 @@ def sb2_to_cpp(infilename_sb2):
         com = block[0]
         if com == 'setVar:to:': 
             # TODO: do we need to pass by value instead of pass by reference? <= ex. increment ??
-            # (Perhaps: is copy constructor used in default, by doing "=" ???)
             return '{!s} = {!s};\n'.format(modify_variable_name(block[1]), convert_block(block[2]))
         elif com == 'readVariable':
             return modify_variable_name(block[1])
@@ -179,7 +178,7 @@ def sb2_to_cpp(infilename_sb2):
         elif com == 'answer':
             return name_of_answer_variable;
         elif com == 'rounded':
-            return 'Var(roundf(' + convert_block(block[1]) + '.asNumber()))'
+            return 'Var(round(' + convert_block(block[1]) + '.asNumber()))'
         elif com == 'randomFrom:to:':
             return 'Var(randUniform(' + convert_block(block[1]) + '.asNumber(), ' + convert_block(block[2]) + '.asNumber()))'
         elif com == 'computeFunction:of:':
@@ -231,8 +230,6 @@ def sb2_to_cpp(infilename_sb2):
                 return 'insertAtRandomOfList(' + convert_block(block[1]) + ',' + modify_variable_name(block[3]) + ');\n'
             else:
                 return 'insertAtIndexOfList(' + convert_block(block[1]) + ',' + convert_block(block[2]) + ',' + modify_variable_name(block[3]) + ');\n'   
-            # return '/* [not implemented] ' + json.dumps(block) + ' */;\n' # TODO: allow out-of-range access
-            # return 'insertAtOfList(' + convert_block(block[1]) + ',' + modify_variable_name(block[2]) + ');\n'
         elif com == 'contentsOfList:':
             return 'contentsOfList(' + modify_variable_name(block[1]) + ')'
         elif com == 'stringLength:':
@@ -256,6 +253,10 @@ def sb2_to_cpp(infilename_sb2):
     error_message = ''
 
     cpp_source += '''
+static int roundToInt(double x){
+    return (x < 0) ? -(int)(-x + 0.5) : (int)(x + 0.5);
+}
+
 class Var{
 public:
     string sval;
@@ -274,14 +275,11 @@ public:
         sval = string(v.sval); dval = v.dval;
         type = v.type; numericState = v.numericState;
     }
-
-
-    static bool isNumericString(const string &s) { // very costly. (> 0.5 ms/call)
-        regex re ("^[-+]?[0-9]*\\\\.?[0-9]+([eE][-+]?[0-9]+)?$");
-        return regex_match(s, re);
+    static bool isNumericString(const string &s) {
+        char* ep;
+        strtod(s.c_str(), &ep);
+        return !ep || !*ep;
         // TODO: In Scratch '000' is regarded as non-numeric (but here regarded as numeric)
-        // TODO: >4000 reading from stdin only costs longer than 2sec. (typical time limit).
-        //       It is necessary to speed up this func...!
     }
     bool isNumeric() const{
         if (type == NUMBER) return true;
@@ -295,11 +293,12 @@ public:
         return (isNumeric()) ? atof(sval.c_str()) : 0.0;
     }
     static bool isNearInteger(const double &x){
-        return (fabs(roundf(x) - x) < 1e-10);
+        return (fabs(round(x) - x) < 1e-8);
+        // TODO: allow integer type in Var class
     }
     string asString() const{
         if (type == STRING) return sval;
-        if (isNearInteger(dval)) return to_string((int)roundf(dval));
+        if (isNearInteger(dval)) return to_string(roundToInt(dval));
         return to_string(dval);
     }
     Var operator+(const Var &y) const{
@@ -398,7 +397,7 @@ Var contentsOfList(const vector<Var> &list){
 double randUniform(double x, double y){
     if (x > y) return randUniform(y, x);
     if (Var::isNearInteger(x) && Var::isNearInteger(y)){
-        int xi = (int)(roundf(x)), yi = (int)(roundf(y));
+        int xi = roundToInt(x), yi = roundToInt(y);
         return xi + rand() % (yi - xi + 1);
     }else{
         return x + (y - x) * (0.0 + rand()) / RAND_MAX;
