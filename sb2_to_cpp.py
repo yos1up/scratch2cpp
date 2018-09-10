@@ -128,6 +128,9 @@ def sb2_to_cpp(infilename_sb2):
         for block in script_list[offset:]:
             snippet += convert_block(block)
 
+        # add semicolon to non-sentence snippet
+        if snippet != '' and snippet[-1] != '\n': snippet += ';\n'
+
         return snippet, func_signature
 
 
@@ -135,23 +138,19 @@ def sb2_to_cpp(infilename_sb2):
         '''
         block: ['name of command', args...]
         returns <str>: code snippet (C++)．
+
+        list of opcode: https://en.scratch-wiki.info/wiki/Scratch_File_Format/Block_Selectors
         '''
+        logging.info('now converting: ', block)
         if type(block) in [str, int, float]:
             return 'Var({!s})'.format(process_literal(block))
         com = block[0]
-        if com == 'setVar:to:': # TODO: pass by value
+        if com == 'setVar:to:': 
+            # TODO: do we need to pass by value instead of pass by reference? <= ex. increment ??
+            # (Perhaps: is copy constructor used in default, by doing "=" ???)
             return '{!s} = {!s};\n'.format(modify_variable_name(block[1]), convert_block(block[2]))
         elif com == 'readVariable':
             return modify_variable_name(block[1])
-        elif com == 'doRepeat':
-            counter_name = random_identifier_name()
-            return 'for (int {0!s}=0;{0!s}<{1!s}.asNumber();{0!s}++){{\n'.format(counter_name, convert_block(block[1])) \
-                    + indent(convert_script_list(block[2])[0], 4) \
-                    + '}\n'
-        elif com == 'doForever':
-            return 'while (1){\n' \
-                    + indent(convert_script_list(block[1])[0], 4) \
-                    + '}\n'
         elif com in ['+','-','*','/','%','>','<']:
             return '(' + convert_block(block[1]) + com + convert_block(block[2]) + ')'
         elif com == '=':
@@ -160,14 +159,36 @@ def sb2_to_cpp(infilename_sb2):
             return '(' + convert_block(block[1]) + ' && ' + convert_block(block[2]) + ')'
         elif com == '|':
             return '(' + convert_block(block[1]) + ' || ' + convert_block(block[2]) + ')'
+        elif com == 'not':
+            return '(!' + convert_block(block[1]) + ')'
+        elif com == 'doRepeat':
+            counter_name = random_identifier_name()
+            return 'for (int {0!s}=0;{0!s}<{1!s}.asNumber();{0!s}++){{\n'.format(counter_name, convert_block(block[1])) \
+                    + indent(convert_script_list(block[2])[0], 4) \
+                    + '}\n'
+        elif com == 'doUntil':
+            return 'while (!({!s})){{\n'.format(convert_block(block[1])) \
+                    + indent(convert_script_list(block[2])[0], 4) \
+                    + '}\n'
+        elif com == 'doForever':
+            return 'while (1){\n' \
+                    + indent(convert_script_list(block[1])[0], 4) \
+                    + '}\n'
         elif com == 'changeVar:by:':
             return modify_variable_name(block[1]) + '+=' + convert_block(block[2]) + ';\n'
         elif com == 'answer':
             return name_of_answer_variable;
         elif com == 'rounded':
-            return 'Var(round(' + convert_block(block[1]) + '.asNumber()))'
+            return 'Var(roundf(' + convert_block(block[1]) + '.asNumber()))'
+        elif com == 'randomFrom:to:':
+            return 'Var(randUniform(' + convert_block(block[1]) + '.asNumber(), ' + convert_block(block[2]) + '.asNumber()))'
         elif com == 'computeFunction:of:':
-            return block[1] + '(' + convert_block(block[2]) + '.asNumber())'
+            func_name = block[1]
+            if func_name == '10 ^':
+                return 'Var(pow(10.0, ' + convert_block(block[2]) + '.asNumber()))'
+            dic = {'abs':'fabs', 'floor':'floorf', 'ln':'log', 'e ^':'exp'}
+            if func_name in dic: func_name = dic[func_name]
+            return 'Var(' + func_name + '(' + convert_block(block[2]) + '.asNumber()))'
         elif com == 'concatenate:with:':
             return 'Var(' + convert_block(block[1]) + '.asString() + ' + convert_block(block[2]) + '.asString())'
         elif com == 'doIf':
@@ -184,25 +205,40 @@ def sb2_to_cpp(infilename_sb2):
             return 'cin >> {!s};\n'.format(name_of_answer_variable)
         elif com == 'say:':
             return 'cout << {!s} << endl;\n'.format(convert_block(block[1]))
+        elif com == 'think:':
+            return 'cerr << {!s} << endl;\n'.format(convert_block(block[1]))
         elif com == 'lineCountOfList:':
             return 'Var({!s}.size())'.format(modify_variable_name(block[1]))
-        elif com == 'append:toList:': # TODO: allow out-of-range access 
+        elif com == 'append:toList:': 
             return '{!s}.push_back({!s});\n'.format(modify_variable_name(block[2]), convert_block(block[1]))
-        elif com == 'getLine:ofList:': # TODO: allow out-of-range access 
-            return '{!s}[(int){!s}.asNumber()-1]'.format(modify_variable_name(block[2]), convert_block(block[1]))
+        elif com == 'getLine:ofList:':
+            return 'getLineOfList(' + convert_block(block[1]) + ', ' + modify_variable_name(block[2]) + ')'
         elif com == 'setLine:ofList:to:':
-            return '{!s}[(int){!s}.asNumber()-1] = {!s};\n'.format(modify_variable_name(block[2]), convert_block(block[1]), convert_block(block[3]))
+            return 'setLineOfListTo(' + convert_block(block[1]) + ', ' + modify_variable_name(block[2]) + ', ' + convert_block(block[3]) + ');\n'
         elif com == 'list:contains:':
             return '(find({0!s}.begin(), {0!s}.end(), {1!s}) != {0!s}.end())'.format(modify_variable_name(block[1]), convert_block(block[2]))
         elif com == 'deleteLine:ofList:':
             if block[1] in ['all']:
                 return '{!s}.clear();\n'.format(modify_variable_name(block[2]))
+            elif block[1] in ['last']:
+                return '{!s}.pop_back();\n'.format(modify_variable_name(block[2]))
+            else: # by index
+                return 'deleteLineOfList(' + convert_block(block[1]) + ',' + modify_variable_name(block[2]) + ');\n'
+        elif com == 'insert:at:ofList:':
+            if block[2] in ['last']:
+                return '{!s}.push_back({!s});\n'.format(modify_variable_name(block[3]), convert_block(block[1]))
+            elif block[2] in ['random']:
+                return 'insertAtRandomOfList(' + convert_block(block[1]) + ',' + modify_variable_name(block[3]) + ');\n'
             else:
-                pass
+                return 'insertAtIndexOfList(' + convert_block(block[1]) + ',' + convert_block(block[2]) + ',' + modify_variable_name(block[3]) + ');\n'   
+            # return '/* [not implemented] ' + json.dumps(block) + ' */;\n' # TODO: allow out-of-range access
+            # return 'insertAtOfList(' + convert_block(block[1]) + ',' + modify_variable_name(block[2]) + ');\n'
+        elif com == 'contentsOfList:':
+            return 'contentsOfList(' + modify_variable_name(block[1]) + ')'
         elif com == 'stringLength:':
             return 'Var(' + convert_block(block[1]) + '.asString().size())'
-        elif com == 'letter:of:': # TODO: allow out-of-range access 
-            return 'Var(' + convert_block(block[2]) + '.asString().substr((int)' + convert_block(block[1]) + '.asNumber()-1, 1))'
+        elif com == 'letter:of:':
+            return 'letterOf(' + convert_block(block[1]) +  ',' + convert_block(block[2]) + ')'
         elif com == 'getParam':
             return modify_argument_name(block[1])
         elif com == 'call':
@@ -229,11 +265,16 @@ public:
     enum NumericState {UNKNOWN = -1, STRINGY = 0, NUMERIC = 1};
     mutable NumericState numericState;
 
-    Var(){sval = ""; type = STRING; numericState = STRINGY;}
+    Var(){sval = ""; type = STRING; numericState = STRINGY;} // represent null?
     Var(string s){
         sval = s; type = STRING; numericState = UNKNOWN;
     }
     Var(double d){dval = d; type = NUMBER; numericState = NUMERIC;}
+    Var(const Var &v){
+        sval = string(v.sval); dval = v.dval;
+        type = v.type; numericState = v.numericState;
+    }
+
 
     static bool isNumericString(const string &s) { // very costly. (> 0.5 ms/call)
         regex re ("^[-+]?[0-9]*\\\\.?[0-9]+([eE][-+]?[0-9]+)?$");
@@ -253,9 +294,12 @@ public:
         if (type == NUMBER) return dval;
         return (isNumeric()) ? atof(sval.c_str()) : 0.0;
     }
+    static bool isNearInteger(const double &x){
+        return (fabs(roundf(x) - x) < 1e-10);
+    }
     string asString() const{
         if (type == STRING) return sval;
-        if (fabs(round(dval) - dval) < 1e-10) return to_string((int)dval);
+        if (isNearInteger(dval)) return to_string((int)roundf(dval));
         return to_string(dval);
     }
     Var operator+(const Var &y) const{
@@ -303,6 +347,65 @@ istream& operator >> (istream& is, Var& p){
     string s; is >> s; p = Var(s);
     return is;
 }
+
+Var letterOf(Var index, Var sourceString){
+    /* index: 1-origined */
+    string str = sourceString.asString();
+    int idx = (int)(index.asNumber() - 1);
+    // seem to be dirty but Scratch seems to do like this.
+    // ex. letterOf(0.01, "world") == "w", letterOf(1.99, "world") == "w", letterOf(5.99, "world") == "d"
+    if (0 <= idx && idx < str.size()) return Var(str.substr(idx, 1));
+    return Var();
+}
+
+// TODO: should we make a new class for vector<Var>?
+Var getLineOfList(const Var &index, const vector<Var> &list){
+    /* index: 1-origined */
+    int idx = (int)index.asNumber() - 1;
+    // (unlike 'letterOf', index==0.9 does not work.)
+    if (0 <= idx && idx < list.size()) return list[idx];
+    return Var();
+}
+void setLineOfListTo(const Var &index, vector<Var> &list, const Var &v){
+    /* index: 1-origined */
+    int idx = (int)index.asNumber() - 1;
+    if (0 <= idx && idx < list.size()) list[idx] = v;
+}
+void deleteLineOfList(const Var &index, vector<Var> &list){
+    /* index: 1-origined */
+    int idx = (int)index.asNumber() - 1;
+    if (0 <= idx && idx < list.size()) list.erase(list.begin() + idx);
+}
+void insertAtIndexOfList(const Var &item, const Var &index, vector<Var> &list){
+    /* index: 1-origined */
+    int idx = (int)index.asNumber() - 1;
+    if (0 <= idx && idx <= list.size()) list.insert(list.begin() + idx, item);   
+}
+void insertAtRandomOfList(const Var &item, vector<Var> &list){
+    int idx = rand() % (list.size() + 1);
+    list.insert(list.begin() + idx, item);
+}
+Var contentsOfList(const vector<Var> &list){
+    /* concatenate elements of list with space */
+    string ret;
+    for(int i=0;i<list.size();i++){
+        if (i > 0) ret += ' ';
+        ret += list[i].asString();
+    }
+    return Var(ret);
+}
+
+double randUniform(double x, double y){
+    if (x > y) return randUniform(y, x);
+    if (Var::isNearInteger(x) && Var::isNearInteger(y)){
+        int xi = (int)(roundf(x)), yi = (int)(roundf(y));
+        return xi + rand() % (yi - xi + 1);
+    }else{
+        return x + (y - x) * (0.0 + rand()) / RAND_MAX;
+    }
+}
+
+
 '''
     name_of_answer_variable = 'buf_answer'
     cpp_source += 'Var {!s}; // for "answer"\n\n'.format(name_of_answer_variable)
