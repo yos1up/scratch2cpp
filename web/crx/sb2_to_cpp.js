@@ -225,8 +225,12 @@ double randUniform(double x, double y){
         cpp_source += '}\n\n';
     }
 
-    if (unknown_command_set.length > 0){
-        error_message += 'WARNING: the following commands are not converted: ' + unknown_command_set.join(',');
+    if (unknown_command_set.size > 0){
+        if (lang=='ja'){
+            error_message += 'けいこく: いかのブロックは、へんかんできませんでした！\n' + Array.from(unknown_command_set).join(',');
+        }else{
+            error_message += 'WARNING: the following commands are not converted!\n' + Array.from(unknown_command_set).join(',');
+        }
     }
     return [cpp_source, error_message];
 }

@@ -55,7 +55,7 @@ document.getElementById("file-upload-scratch-project").addEventListener("change"
                                 var cppSource = rslt[0];
                                 var errorMessage = rslt[1];
                                 if (errorMessage != ''){
-                                    alert(errorMessage);
+                                    window.alert(errorMessage);
                                 }
 
                                 // paste to plain editor

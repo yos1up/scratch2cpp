@@ -1,50 +1,4 @@
-にほんごバージョン は [こちら](#japanese)
-
-# Blocks supported in scratch2cpp
-
-### Events
-
-* `when :Flag: clicked` : specify entry point
-
-### Looks
-
-* `say ...` : output a line to standard output
-
-* `think ...` : output a line to standard error
-
-### Control
-
-* `repeat ...`
-
-* `forever`
-
-* `if ... then`
-
-* `if ... then / else`
-
-* `repeat until ...`
-
-* `stop ...` : terminate script (the option is ignored) 
-
-### Sensing
-
-* `ask ... and wait` : input a value from standard input (values are split by spaces and returns)
-
-* `answer` : storage for `ask ... and wait` block
-
-### Operators
-
-(every operator is supported.)
-
-### Data
-
-(every manipulation of data is supported.)
-
-### More Blocks
-
-* `Make a Block` : define procedures
-
-
+English version is [here](#english).
 
 <a name="japanese"></a>
 # scratch2cpp で つかえる ブロック
@@ -90,6 +44,55 @@
 ### そのた
 
 * `ブロックをつくる` : しょりのまとまりを ていぎできます
+
+
+
+<a name="english"></a>
+# Blocks supported in scratch2cpp
+
+### Events
+
+* `when :Flag: clicked` : specify entry point
+
+### Looks
+
+* `say ...` : output a line to standard output
+
+* `think ...` : output a line to standard error
+
+### Control
+
+* `repeat ...`
+
+* `forever`
+
+* `if ... then`
+
+* `if ... then / else`
+
+* `repeat until ...`
+
+* `stop ...` : terminate script (the option is ignored) 
+
+### Sensing
+
+* `ask ... and wait` : input a value from standard input (values are split by spaces and returns)
+
+* `answer` : storage for `ask ... and wait` block
+
+### Operators
+
+(every operator is supported.)
+
+### Data
+
+(every manipulation of data is supported.)
+
+### More Blocks
+
+* `Make a Block` : define procedures
+
+
 
 
 
