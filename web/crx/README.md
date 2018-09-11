@@ -27,3 +27,7 @@ There will be orange buttons in submit pages and problem pages.
 4. Your Scratch project file will be converted to C++ source, and displayed in the solution form.
 
 5. Submit it! (Make sure that `C++14(GCC 5.4.1)` (or later) is selected as the language.)
+
+## Blocks supported in scratch2cpp
+
+See [here](../blocks.md).
