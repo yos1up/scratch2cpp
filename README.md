@@ -43,3 +43,7 @@ git clone https://github.com/yos1up/scratch2cpp.git
 ## Example of Scratch projects
 
 See https://scratch.mit.edu/studios/5346476/
+
+## Blocks supported in scratch2cpp
+
+See [here](./blocks.md).
