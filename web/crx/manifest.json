@@ -10,7 +10,7 @@
     "content_scripts": [
         {
             "matches": ["https://beta.atcoder.jp/contests/*/submit*", "https://beta.atcoder.jp/contests/*/tasks/*"],
-            "js": ["jquery-3.3.1.min.js", "Stuk-jszip-9fb481a/dist/jszip.js", "Stuk-jszip-9fb481a/dist/jszip.min.js", "sb2_to_cpp.js", "myscript.js"]
+            "js": ["lib/jquery-3.3.1.min.js", "lib/Stuk-jszip-9fb481a/dist/jszip.js", "lib/Stuk-jszip-9fb481a/dist/jszip.min.js", "sb2_to_cpp.js", "myscript.js"]
         }
     ]
 }
