@@ -30,4 +30,4 @@ There will be orange buttons in submit pages and problem pages.
 
 ## Blocks supported in scratch2cpp
 
-See [here](../blocks.md).
+See [here](../../blocks.md).
