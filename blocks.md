@@ -1,4 +1,4 @@
-にほんご バージョン
+にほんごバージョン は [こちら](#japanese)
 
 # Blocks supported in scratch2cpp
 
@@ -46,7 +46,7 @@
 
 
 
-
+<a name="japanese"></a>
 # scratch2cpp で つかえる ブロック
 
 ### イベント
