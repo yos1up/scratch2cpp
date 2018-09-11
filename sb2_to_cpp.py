@@ -92,7 +92,7 @@ def sb2_to_cpp(infilename_sb2):
 
 
     def random_identifier_name():
-        return ''.join([chr(ord('a')+random.randrange(26)) for i in range(6)])
+        return ''.join([chr(ord('a')+random.randrange(26)) for i in range(8)])
 
     def indent(snippet, num_space):
         '''

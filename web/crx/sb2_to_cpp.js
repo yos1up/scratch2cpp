@@ -283,7 +283,7 @@ function getRandomInt(max) {
 
 function random_identifier_name(){
     var ret = '';
-    for(let i=0;i<6;i++) ret += String.fromCharCode('a'.charCodeAt(0) + getRandomInt(26));
+    for(let i=0;i<8;i++) ret += String.fromCharCode('a'.charCodeAt(0) + getRandomInt(26));
     return ret;
 }
 
