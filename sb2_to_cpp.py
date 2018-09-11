@@ -185,7 +185,7 @@ def sb2_to_cpp(infilename_sb2):
             func_name = block[1]
             if func_name == '10 ^':
                 return 'Var(pow(10.0, ' + convert_block(block[2]) + '.asNumber()))'
-            dic = {'abs':'fabs', 'floor':'floorf', 'ln':'log', 'e ^':'exp'}
+            dic = {'abs':'fabs', 'ceiling':'ceil', 'ln':'log', 'log':'log10', 'e ^':'exp'}
             if func_name in dic: func_name = dic[func_name]
             return 'Var(' + func_name + '(' + convert_block(block[2]) + '.asNumber()))'
         elif com == 'concatenate:with:':
@@ -427,6 +427,7 @@ double randUniform(double x, double y){
         cpp_source += '\n'
 
     # define functions (prototype)
+    cpp_source += '// prototype declaration\n'    
     for script in scr_scripts:
         snippet, func_signature = convert_script_list(script[2])
         if not func_signature: # 無名のコードブロックの場合

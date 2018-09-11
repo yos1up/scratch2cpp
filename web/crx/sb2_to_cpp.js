@@ -197,6 +197,7 @@ double randUniform(double x, double y){
     }
 
     // define functions (prototype)
+    cpp_source += '// prototype declaration\n';
     for (let script of scr_scripts){
         let rslt = convert_script_list(script[2]);
         let snippet = rslt[0];
@@ -378,7 +379,7 @@ function convert_block(block){
         if (func_name === '10 ^'){
             return 'Var(pow(10.0, ' + convert_block(block[2]) + '.asNumber()))';
         }
-        dic = {'abs':'fabs', 'floor':'floorf', 'ln':'log', 'e ^':'exp'};
+        dic = {'abs':'fabs', 'ceiling':'ceil', 'ln':'log', 'log':'log10', 'e ^':'exp'};
         if (func_name in dic) func_name = dic[func_name];
         return 'Var(' + func_name + '(' + convert_block(block[2]) + '.asNumber()))';
     }else if (com === 'concatenate:with:'){

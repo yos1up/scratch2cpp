@@ -17,11 +17,19 @@ if (typeof div !== 'undefined' && div !== null){
 }
 
 // create and place the button for upload
-var div = document.getElementsByClassName("col-sm-3 editor-buttons")[0];
+div = document.getElementsByClassName("col-sm-3 editor-buttons")[0];
 if (typeof div !== 'undefined' && div !== null){
     var buttonText = {'ja':'Scratch プロジェクトをロード', 'en':'Load Scratch project'}[lang];
     div.insertAdjacentHTML('beforeend', `<p><button id="btn-upload-scratch-project" type="button" class="btn btn-default btn-sm " style="background-color: orange; color: white">` + buttonText + `</button></p>`);
 }
+
+//create and plave the link to blocks information (https://github.com/yos1up/scratch2cpp/blob/master/blocks.md)
+div = document.getElementsByClassName("col-sm-3 editor-buttons")[0];
+if (typeof div !== 'undefined' && div !== null){
+    var text = {'ja':'※つかえるブロックは？', 'en':'Which blocks are supported?'}[lang];
+    div.insertAdjacentHTML('beforeend', `<a href="https://github.com/yos1up/scratch2cpp/blob/master/blocks.md" target="_blank">` + text + `</a>`);
+}
+
 
 
 // button for upload => trigger <input type='file'>
