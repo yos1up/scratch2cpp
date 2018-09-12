@@ -203,9 +203,9 @@ def sb2_to_cpp(infilename_sb2):
         elif com == 'doAsk':
             return 'cin >> {!s};\n'.format(name_of_answer_variable)
         elif com == 'say:':
-            return 'cout << {!s} << endl;\n'.format(convert_block(block[1]))
+            return 'cout << {!s} << "\\n";\n'.format(convert_block(block[1]))
         elif com == 'think:':
-            return 'cerr << {!s} << endl;\n'.format(convert_block(block[1]))
+            return 'cerr << {!s} << "\\n";\n'.format(convert_block(block[1]))
         elif com == 'lineCountOfList:':
             return 'Var({!s}.size())'.format(modify_variable_name(block[1]))
         elif com == 'append:toList:': 
@@ -249,10 +249,23 @@ def sb2_to_cpp(infilename_sb2):
 
 
     # convert to cpp
-    cpp_source = '/* converted by sb2_to_cpp */\n#include <bits/stdc++.h>\n#define debug cerr << "--" << __LINE__ << "--" << endl\nusing namespace std;\n\n'
     error_message = ''
+    cpp_source = '''/* converted by scratch2cpp (https://github.com/yos1up/scratch2cpp)
+   This script is compatible with the following compilers:
+   - GCC (unless every name of variables contains non-ascii characters)
+   - Clang 
+*/
+#include <iostream>
+#include <stdlib.h>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <math.h>
+#define debug cerr << "--" << __LINE__ << "--" << "\\n"
+using namespace std;
 
-    cpp_source += '''
+const double EPS = 1e-8;
+
 static int roundToInt(double x){
     return (x < 0) ? -(int)(-x + 0.5) : (int)(x + 0.5);
 }
@@ -293,8 +306,11 @@ public:
         return (isNumeric()) ? atof(sval.c_str()) : 0.0;
     }
     static bool isNearInteger(const double &x){
-        return (fabs(round(x) - x) < 1e-8);
+        return (fabs(round(x) - x) < EPS);
         // TODO: allow integer type in Var class
+    }
+    static bool isNearNumber(const double &x, const double &y){
+        return fabs(x - y) < EPS;
     }
     string asString() const{
         if (type == STRING) return sval;
@@ -404,7 +420,6 @@ double randUniform(double x, double y){
     }
 }
 
-
 '''
     name_of_answer_variable = 'buf_answer'
     cpp_source += 'Var {!s}; // for "answer"\n\n'.format(name_of_answer_variable)
@@ -444,6 +459,7 @@ double randUniform(double x, double y){
 
         cpp_source += 'int {!s}({!s}){{\n'.format(func_signature[0], ', '.join(['Var {!s}'.format(v) for v in func_signature[1:]])) 
         cpp_source += indent(snippet, 4)
+        cpp_source += indent('return 0;\n', 4)
         cpp_source += '}\n\n'
 
 
@@ -452,7 +468,7 @@ double randUniform(double x, double y){
     logging.info('===============================')
 
     if unknown_command_set:
-        error_message += 'WARNING: the following commands are not converted: ' + ', '.join(unknown_command_set)
+        error_message += 'WARNING: the following blocks are not converted: ' + ', '.join(unknown_command_set)
 
     return cpp_source, json_source, error_message
 

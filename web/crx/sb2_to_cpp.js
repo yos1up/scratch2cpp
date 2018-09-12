@@ -1,5 +1,5 @@
 // for reporting
-var unknown_command_set = new Set();
+var unknown_command_set;
 var name_of_answer_variable = 'buf_answer';
 
 function projectJsonToCpp(projectJsonString){
@@ -14,15 +14,28 @@ function projectJsonToCpp(projectJsonString){
         } 
     }
 
-    var error_message = '';
-    var cpp_source = `/* converted by scratch2cpp (https://github.com/yos1up/scratch2cpp) */
-#include <bits/stdc++.h>
-#define debug cerr << "--" << __LINE__ << "--" << endl
+    unknown_command_set = new Set();
+    var error_info = {'code':0, 'message':''};
+    var cpp_source = `/* converted by scratch2cpp (https://github.com/yos1up/scratch2cpp)
+   This script is compatible with the following compilers:
+   - GCC (unless every name of variables contains non-ascii characters)
+   - Clang 
+*/
+#include <iostream>
+#include <stdlib.h>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <math.h>
+#define debug cerr << "--" << __LINE__ << "--" << "\\n"
 using namespace std;
+
+const double EPS = 1e-8;
 
 static int roundToInt(double x){
     return (x < 0) ? -(int)(-x + 0.5) : (int)(x + 0.5);
 }
+
 
 class Var{
 public:
@@ -60,8 +73,11 @@ public:
         return (isNumeric()) ? atof(sval.c_str()) : 0.0;
     }
     static bool isNearInteger(const double &x){
-        return (fabs(round(x) - x) < 1e-8);
+        return fabs(round(x) - x) < EPS;
         // TODO: allow integer type in Var class
+    }
+    static bool isNearNumber(const double &x, const double &y){
+        return fabs(x - y) < EPS;
     }
     string asString() const{
         if (type == STRING) return sval;
@@ -222,17 +238,14 @@ double randUniform(double x, double y){
         let args = func_signature.slice(1).map(v => 'Var '+v).join(', ');
         cpp_source += 'int '+func_signature[0]+'('+args+'){\n'; 
         cpp_source += indent(snippet, 4);
+        cpp_source += indent('return 0;\n', 4);
         cpp_source += '}\n\n';
     }
 
     if (unknown_command_set.size > 0){
-        if (lang=='ja'){
-            error_message += 'けいこく: いかのブロックは、へんかんできませんでした！\n' + Array.from(unknown_command_set).join(',');
-        }else{
-            error_message += 'WARNING: the following commands are not converted!\n' + Array.from(unknown_command_set).join(',');
-        }
+        error_info = {'code':1, 'message':Array.from(unknown_command_set).join(',')};
     }
-    return [cpp_source, error_message];
+    return [cpp_source, error_info];
 }
 
 
@@ -401,9 +414,9 @@ function convert_block(block){
     }else if (com === 'doAsk'){
         return 'cin >> '+name_of_answer_variable+';\n';
     }else if (com === 'say:'){
-        return 'cout << '+convert_block(block[1])+' << endl;\n';
+        return 'cout << '+convert_block(block[1])+' << "\\n";\n';
     }else if (com === 'think:'){
-        return 'cerr << '+convert_block(block[1])+' << endl;\n';
+        return 'cerr << '+convert_block(block[1])+' << "\\n";\n';
     }else if (com === 'lineCountOfList:'){
         return 'Var('+modify_variable_name(block[1])+'.size())';
     }else if (com === 'append:toList:'){ 
