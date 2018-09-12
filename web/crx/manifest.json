@@ -2,7 +2,7 @@
     "name": "Scratcher's AtCoder",
     "short_name": "ScratchersAC",
     "description" : "for Scratchers who want to compete in AtCoder",
-    "version": "1.0",
+    "version": "1.0.1",
     "manifest_version": 2,
     "homepage_url": "https://github.com/yos1up/scratch2cpp/tree/master/web/crx",
     "icons": {
