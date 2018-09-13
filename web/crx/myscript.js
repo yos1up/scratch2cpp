@@ -60,17 +60,25 @@ document.getElementById("file-upload-scratch-project").addEventListener("change"
                                 // convert project.json -> cpp
                                 var rslt = projectJsonToCpp(fileData);
                                 var cppSource = rslt[0];
-                                var errorInfo = rslt[1];
-                                var errorMessage = '';
-                                switch (errorInfo['code']){
-                                    case 1:
-                                        errorMessage = {
-                                            'en':'WARNING: the following commands are not converted!',
-                                            'ja':'けいこく: いかのブロックは、へんかんできませんでした！'
-                                        }[lang] + '\n' + errorInfo['message'];
-                                        break;
+                                var errorInfos = rslt[1];
+                                for (let errorInfo of errorInfos){
+                                    var errorMessage = '';
+                                    switch (errorInfo['code']){
+                                        case 1:
+                                            errorMessage = {
+                                                'en':'WARNING: the following commands are not converted!',
+                                                'ja':'けいこく: いかのブロックは、へんかんできませんでした！'
+                                            }[lang] + '\n' + errorInfo['message'];
+                                            break;
+                                        case 2:
+                                            errorMessage = {
+                                                'en':'ERROR: No entry point found. Please use a "when [Flag] clicked" block to specify the entry point.',
+                                                'ja':'エラー: プログラムのかいしちてんがわかりません！「（はた）がクリックされたとき」ブロックを、はいちしてください！'
+                                            }[lang];
+                                            break;
+                                    }
+                                    window.alert(errorMessage);
                                 }
-                                if (errorMessage !== '') window.alert(errorMessage);
 
                                 // paste to plain editor
                                 document.getElementsByClassName("form-control plain-textarea")[0].value = cppSource;

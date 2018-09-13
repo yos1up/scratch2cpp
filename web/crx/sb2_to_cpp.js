@@ -15,7 +15,7 @@ function projectJsonToCpp(projectJsonString){
     }
 
     unknown_command_set = new Set();
-    var error_info = {'code':0, 'message':''};
+    var error_infos = [];
     var cpp_source = `/* converted by scratch2cpp (https://github.com/yos1up/scratch2cpp)
    This script is compatible with the following compilers:
    - GCC (unless every name of variables contains non-ascii characters)
@@ -228,6 +228,7 @@ double randUniform(double x, double y){
 
 
     // define functions (contents)
+    var existsMain = false;
     for (let script of scr_scripts){
         let rslt = convert_script_list(script[2]);
         let snippet = rslt[0];
@@ -240,12 +241,16 @@ double randUniform(double x, double y){
         cpp_source += indent(snippet, 4);
         cpp_source += indent('return 0;\n', 4);
         cpp_source += '}\n\n';
+        if (func_signature[0] === 'main') existsMain = true;
     }
 
-    if (unknown_command_set.size > 0){
-        error_info = {'code':1, 'message':Array.from(unknown_command_set).join(',')};
+    if (!existsMain){
+        error_infos.push({'code':2, 'message':'no entry point'});
     }
-    return [cpp_source, error_info];
+    if (unknown_command_set.size > 0){
+        error_infos.push({'code':1, 'message':Array.from(unknown_command_set).join(',')});
+    }
+    return [cpp_source, error_infos];
 }
 
 
