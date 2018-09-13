@@ -2,6 +2,7 @@
 var inputElem = document.createElement("input");
 inputElem.type = 'file';
 inputElem.id = 'file-upload-scratch-project';
+inputElem.accept = '.sb2';
 inputElem.style.display = 'none';
 document.body.appendChild(inputElem);
 
@@ -9,35 +10,25 @@ document.body.appendChild(inputElem);
 var lang = 'en';
 if (document.body.innerText.indexOf('言語') >= 0) lang = 'ja';
 
-// create a button to navigate to Scratch online editor
+// place some elements
 var div = document.getElementsByClassName("col-sm-3 editor-buttons")[0];
 if (typeof div !== 'undefined' && div !== null){
+    // create a button to navigate to Scratch online editor
     var buttonText = {'ja':'Scratch オンラインエディタ', 'en':'Scratch online editor'}[lang];
     div.insertAdjacentHTML('beforeend', `<p><button type="button" class="btn btn-default btn-sm " style="background-color: orange; color: white" onclick="window.open('https://scratch.mit.edu/projects/editor/');">` + buttonText + `</button></p>`);
-}
-
-// create and place the button for upload
-div = document.getElementsByClassName("col-sm-3 editor-buttons")[0];
-if (typeof div !== 'undefined' && div !== null){
-    var buttonText = {'ja':'Scratch プロジェクトをロード', 'en':'Load Scratch project'}[lang];
+    
+    // create and place the button for upload
+    buttonText = {'ja':'Scratch プロジェクトをロード', 'en':'Load Scratch project'}[lang];
     div.insertAdjacentHTML('beforeend', `<p><button id="btn-upload-scratch-project" type="button" class="btn btn-default btn-sm " style="background-color: orange; color: white">` + buttonText + `</button></p>`);
-}
 
-//create and place the link to usage (https://chrome.google.com/webstore/detail/scratchers-atcoder/hackndbjgkehhjinjjoldifbhnfddklh)
-div = document.getElementsByClassName("col-sm-3 editor-buttons")[0];
-if (typeof div !== 'undefined' && div !== null){
+    //create and place the link to usage (https://chrome.google.com/webstore/detail/scratchers-atcoder/hackndbjgkehhjinjjoldifbhnfddklh)
     var text = {'ja':'※つかいかた', 'en':'[Usage]'}[lang];
     div.insertAdjacentHTML('beforeend', `<a href="https://chrome.google.com/webstore/detail/scratchers-atcoder/hackndbjgkehhjinjjoldifbhnfddklh" target="_blank">` + text + `</a>&nbsp;&nbsp;&nbsp;&nbsp;`);
-}
 
-//create and place the link to blocks information (https://github.com/yos1up/scratch2cpp/blob/master/blocks.md)
-div = document.getElementsByClassName("col-sm-3 editor-buttons")[0];
-if (typeof div !== 'undefined' && div !== null){
+    //create and place the link to blocks information (https://github.com/yos1up/scratch2cpp/blob/master/blocks.md)
     var text = {'ja':'※つかえるブロックは？', 'en':'[Which blocks are supported?]'}[lang];
     div.insertAdjacentHTML('beforeend', `<a href="https://github.com/yos1up/scratch2cpp/blob/master/blocks.md" target="_blank">` + text + `</a>`);
 }
-
-
 
 // button for upload => trigger <input type='file'>
 document.getElementById("btn-upload-scratch-project").onclick = function(){
@@ -109,9 +100,18 @@ document.getElementById("file-upload-scratch-project").addEventListener("change"
                             }
                         );
                     }else{
-                        alert("Not a valid .sb2 file (project.json not found)");
+                        window.alert({
+                            'en':'ERROR: Failed loading .sb2 file (project.json not found)',
+                            'ja':'エラー: .sb2 ファイルの よみこみに しっぱいしました！（project.json がみつかりません）'
+                        }[lang]);
                     }
-                }, function() {alert("Not a valid .sb2 file (unzip failed)");});
+                }, function() {
+                    window.alert({
+                        'en':'ERROR: Failed loading .sb2 file (unzip failed)',
+                        'ja':'エラー: .sb2 ファイルの よみこみに しっぱいしました！（かいとうに しっぱいしました）'
+                    }[lang]);                    
+                }
+            );
         }
     }     
 });
