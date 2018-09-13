@@ -62,13 +62,13 @@ def sb2_to_cpp(infilename_sb2):
         '''
         obj <str/int/float>
         returns <str>
-        if [obj] is interpretable as integer, return the integer stringified.
+        if [obj] is interpretable as integer, return the integer stringified + 'LL' (indicating long long).
         else if [obj] is interpretable as numerical value, return the value stringified.
         if not interpretable, return the string double-quoted.
         '''
         if type(obj) == str:
             val = try_int(obj)
-            if val is not None: return str(val)
+            if val is not None: return str(val) + 'LL'
             val = try_float(obj)
             if val is not None: return str(val)
             return '"' + obj + '"'
@@ -162,7 +162,7 @@ def sb2_to_cpp(infilename_sb2):
             return '(!' + convert_block(block[1]) + ')'
         elif com == 'doRepeat':
             counter_name = random_identifier_name()
-            return 'for (int {0!s}=0;{0!s}<{1!s}.asNumber();{0!s}++){{\n'.format(counter_name, convert_block(block[1])) \
+            return 'for (int {0!s}=0;{0!s}<{1!s}.asInteger();{0!s}++){{\n'.format(counter_name, convert_block(block[1])) \
                     + indent(convert_script_list(block[2])[0], 4) \
                     + '}\n'
         elif com == 'doUntil':
@@ -178,16 +178,16 @@ def sb2_to_cpp(infilename_sb2):
         elif com == 'answer':
             return name_of_answer_variable;
         elif com == 'rounded':
-            return 'Var(round(' + convert_block(block[1]) + '.asNumber()))'
+            return 'Var(round(' + convert_block(block[1]) + '.asDecimal()))'
         elif com == 'randomFrom:to:':
-            return 'Var(randUniform(' + convert_block(block[1]) + '.asNumber(), ' + convert_block(block[2]) + '.asNumber()))'
+            return 'Var(randUniform(' + convert_block(block[1]) + ',' + convert_block(block[2]) + '))'
         elif com == 'computeFunction:of:':
             func_name = block[1]
             if func_name == '10 ^':
-                return 'Var(pow(10.0, ' + convert_block(block[2]) + '.asNumber()))'
+                return 'Var(pow(10.0, ' + convert_block(block[2]) + '.asDecimal()))'
             dic = {'abs':'fabs', 'ceiling':'ceil', 'ln':'log', 'log':'log10', 'e ^':'exp'}
             if func_name in dic: func_name = dic[func_name]
-            return 'Var(' + func_name + '(' + convert_block(block[2]) + '.asNumber()))'
+            return 'Var(' + func_name + '(' + convert_block(block[2]) + '.asDecimal()))'
         elif com == 'concatenate:with:':
             return 'Var(' + convert_block(block[1]) + '.asString() + ' + convert_block(block[2]) + '.asString())'
         elif com == 'doIf':
@@ -266,27 +266,33 @@ using namespace std;
 
 const double EPS = 1e-8;
 
-static int roundToInt(double x){
-    return (x < 0) ? -(int)(-x + 0.5) : (int)(x + 0.5);
-}
-
 class Var{
 public:
     string sval;
     double dval;
-    enum VarType {STRING = 0, NUMBER = 1};
+    long long ival;
+    enum VarType {STRING = 0, INTEGER = 1, DECIMAL = 2}; /* exclusive */
     VarType type;
-    enum NumericState {UNKNOWN = -1, STRINGY = 0, NUMERIC = 1};
+    enum NumericState {UNKNOWN = -1, STRINGY = 0, NINUMERIC = 1, INTEGRAL = 2};
+    /* exclusive (except for UNKNOWN) */
+    /* The order is essential. */
+    /* NINUMERIC : non-integral-numeric */
     mutable NumericState numericState;
 
     Var(){sval = ""; type = STRING; numericState = STRINGY;} // represent null?
     Var(string s){
         sval = s; type = STRING; numericState = UNKNOWN;
     }
-    Var(double d){dval = d; type = NUMBER; numericState = NUMERIC;}
+    Var(double d){dval = d; type = DECIMAL; numericState = UNKNOWN;}
+    Var(long long n){ival = n; type = INTEGER; numericState = INTEGRAL;}
     Var(const Var &v){
-        sval = string(v.sval); dval = v.dval;
+        sval = string(v.sval); dval = v.dval; ival = v.ival;
         type = v.type; numericState = v.numericState;
+    }
+    static bool isIntegralString(const string &s){
+        char* ep;
+        strtoll(s.c_str(), &ep, 10);
+        return !ep || !*ep;
     }
     static bool isNumericString(const string &s) {
         char* ep;
@@ -294,51 +300,85 @@ public:
         return !ep || !*ep;
         // TODO: In Scratch '000' is regarded as non-numeric (but here regarded as numeric)
     }
-    bool isNumeric() const{
-        if (type == NUMBER) return true;
-        if (numericState != UNKNOWN) return numericState == NUMERIC;
-        bool numeric = isNumericString(sval);
-        numericState = (numeric) ? NUMERIC : STRINGY;
-        return numeric;
+    NumericState howNumeric() const{
+        /* If this variable can be interpreted as integer, return INTEGRAL.
+           else if this variable can be interpreted as number, return NUMERIC.
+           else return STRINGY.
+        */
+        if (numericState == UNKNOWN){
+            if (type == INTEGER) numericState = INTEGRAL;
+            else if (type == DECIMAL){
+                numericState = (round(dval) == dval) ? INTEGRAL : NINUMERIC;
+            }else{ //type == STRING
+                if (isIntegralString(sval)) numericState = INTEGRAL;
+                else if (isNumericString(sval)) numericState = NINUMERIC;
+                else numericState = STRINGY;
+            }
+        }
+        return numericState;
     }
-    double asNumber() const{
-        if (type == NUMBER) return dval;
+    bool isNumeric() const{ return howNumeric() >= NINUMERIC; }
+    bool isIntegral() const{ return howNumeric() == INTEGRAL; }
+    long long asInteger() const{
+        if (type == INTEGER) return ival;
+        if (type == DECIMAL) return (long long) dval;
+        return (isNumeric()) ? atoll(sval.c_str()) : 0;
+    }
+    double asDecimal() const{
+        if (type == INTEGER) return (double) ival;
+        if (type == DECIMAL) return dval;
         return (isNumeric()) ? atof(sval.c_str()) : 0.0;
     }
+    /*double asNumber() const{
+        if (type == NUMBER) return dval;
+        return (isNumeric()) ? atof(sval.c_str()) : 0.0;
+    }*/
     static bool isNearInteger(const double &x){
         return (fabs(round(x) - x) < EPS);
-        // TODO: allow integer type in Var class
     }
     static bool isNearNumber(const double &x, const double &y){
         return fabs(x - y) < EPS;
     }
     string asString() const{
+        if (type == INTEGER) return to_string(ival);
         if (type == STRING) return sval;
-        if (isNearInteger(dval)) return to_string(roundToInt(dval));
         return to_string(dval);
     }
     Var operator+(const Var &y) const{
-        return Var(this->asNumber() + y.asNumber());
+        if (this->isIntegral() && y.isIntegral()){
+            return Var(this->asInteger() + y.asInteger());
+        }
+        return Var(this->asDecimal() + y.asDecimal());
     }
     Var operator+=(const Var &y){
         *this = *this + y;
         return *this;
     }
     Var operator-(const Var &y) const{
-        return Var(this->asNumber() - y.asNumber());
+        if (this->isIntegral() && y.isIntegral()){
+            return Var(this->asInteger() - y.asInteger());
+        }
+        return Var(this->asDecimal() - y.asDecimal());
     }
     Var operator*(const Var &y) const{
-        return Var(this->asNumber() * y.asNumber());
+        if (this->isIntegral() && y.isIntegral()){
+            return Var(this->asInteger() * y.asInteger());
+        }
+        return Var(this->asDecimal() * y.asDecimal());
     }
     Var operator/(const Var &y) const{
-        return Var(this->asNumber() / y.asNumber());
+        /* in Scratch 5 / 3 == 1.66667 ??? */
+        return Var(this->asDecimal() / y.asDecimal());
     }
     Var operator%(const Var &y) const{
-        return Var(fmod(this->asNumber(), y.asNumber()));
+        if (this->isIntegral() && y.isIntegral()){
+            return Var(this->asInteger() % y.asInteger());
+        }
+        return Var(fmod(this->asDecimal(), y.asDecimal()));
     }
     bool operator<(const Var &y) const{
         if (this->isNumeric() && y.isNumeric()){
-            return this->asNumber() < y.asNumber();
+            return this->asDecimal() < y.asDecimal();
         }// compare as number if both can be interpreted as numeric
         return this->asString() < y.asString();
     }
@@ -347,7 +387,7 @@ public:
     }
     bool operator==(const Var &y) const{
         if (this->isNumeric() && y.isNumeric()){
-            return this->asNumber() == y.asNumber();
+            return this->asDecimal() == y.asDecimal();
         }// compare as numeric if both are numeric
         return this->asString() == y.asString();
     }
@@ -366,7 +406,7 @@ istream& operator >> (istream& is, Var& p){
 Var letterOf(Var index, Var sourceString){
     /* index: 1-origined */
     string str = sourceString.asString();
-    int idx = (int)(index.asNumber() - 1);
+    int idx = (int)(index.asDecimal() - 1);
     // seem to be dirty but Scratch seems to do like this.
     // ex. letterOf(0.01, "world") == "w", letterOf(1.99, "world") == "w", letterOf(5.99, "world") == "d"
     if (0 <= idx && idx < str.size()) return Var(str.substr(idx, 1));
@@ -376,24 +416,24 @@ Var letterOf(Var index, Var sourceString){
 // TODO: should we make a new class for vector<Var>?
 Var getLineOfList(const Var &index, const vector<Var> &list){
     /* index: 1-origined */
-    int idx = (int)index.asNumber() - 1;
+    int idx = index.asInteger() - 1;
     // (unlike 'letterOf', index==0.9 does not work.)
     if (0 <= idx && idx < list.size()) return list[idx];
     return Var();
 }
 void setLineOfListTo(const Var &index, vector<Var> &list, const Var &v){
     /* index: 1-origined */
-    int idx = (int)index.asNumber() - 1;
+    int idx = index.asInteger() - 1;
     if (0 <= idx && idx < list.size()) list[idx] = v;
 }
 void deleteLineOfList(const Var &index, vector<Var> &list){
     /* index: 1-origined */
-    int idx = (int)index.asNumber() - 1;
+    int idx = index.asInteger() - 1;
     if (0 <= idx && idx < list.size()) list.erase(list.begin() + idx);
 }
 void insertAtIndexOfList(const Var &item, const Var &index, vector<Var> &list){
     /* index: 1-origined */
-    int idx = (int)index.asNumber() - 1;
+    int idx = index.asInteger() - 1;
     if (0 <= idx && idx <= list.size()) list.insert(list.begin() + idx, item);   
 }
 void insertAtRandomOfList(const Var &item, vector<Var> &list){
@@ -410,13 +450,14 @@ Var contentsOfList(const vector<Var> &list){
     return Var(ret);
 }
 
-double randUniform(double x, double y){
+Var randUniform(const Var &x, const Var &y){
     if (x > y) return randUniform(y, x);
-    if (Var::isNearInteger(x) && Var::isNearInteger(y)){
-        int xi = roundToInt(x), yi = roundToInt(y);
-        return xi + rand() % (yi - xi + 1);
+    if (x.isIntegral() && y.isIntegral()){
+        long long xi = x.asInteger(), yi = y.asInteger();
+        return Var(xi + rand() % (yi - xi + 1));
     }else{
-        return x + (y - x) * (0.0 + rand()) / RAND_MAX;
+        double xd = x.asDecimal(), yd = y.asDecimal();
+        return Var(xd + (yd - xd) * (0.0 + rand()) / RAND_MAX);
     }
 }
 
