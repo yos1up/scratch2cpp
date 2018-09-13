@@ -23,10 +23,17 @@ if (typeof div !== 'undefined' && div !== null){
     div.insertAdjacentHTML('beforeend', `<p><button id="btn-upload-scratch-project" type="button" class="btn btn-default btn-sm " style="background-color: orange; color: white">` + buttonText + `</button></p>`);
 }
 
-//create and plave the link to blocks information (https://github.com/yos1up/scratch2cpp/blob/master/blocks.md)
+//create and place the link to usage (https://chrome.google.com/webstore/detail/scratchers-atcoder/hackndbjgkehhjinjjoldifbhnfddklh)
 div = document.getElementsByClassName("col-sm-3 editor-buttons")[0];
 if (typeof div !== 'undefined' && div !== null){
-    var text = {'ja':'※つかえるブロックは？', 'en':'Which blocks are supported?'}[lang];
+    var text = {'ja':'※つかいかた', 'en':'[Usage]'}[lang];
+    div.insertAdjacentHTML('beforeend', `<a href="https://chrome.google.com/webstore/detail/scratchers-atcoder/hackndbjgkehhjinjjoldifbhnfddklh" target="_blank">` + text + `</a>&nbsp;&nbsp;&nbsp;&nbsp;`);
+}
+
+//create and place the link to blocks information (https://github.com/yos1up/scratch2cpp/blob/master/blocks.md)
+div = document.getElementsByClassName("col-sm-3 editor-buttons")[0];
+if (typeof div !== 'undefined' && div !== null){
+    var text = {'ja':'※つかえるブロックは？', 'en':'[Which blocks are supported?]'}[lang];
     div.insertAdjacentHTML('beforeend', `<a href="https://github.com/yos1up/scratch2cpp/blob/master/blocks.md" target="_blank">` + text + `</a>`);
 }
 

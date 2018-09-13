@@ -221,7 +221,7 @@ double randUniform(double x, double y){
         if (func_signature.length == 0){ // 無名のコードブロックの場合
             continue; //func_signature = [random_identifier_name()]; // ランダムな名前の0変数関数として扱う．
         }
-        let args = func_signature.slice(1).map(v => 'Var '+v).join(', ');
+        let args = func_signature.slice(1).map(v => 'const Var &'+v).join(', ');
         cpp_source += 'int '+func_signature[0]+'('+args+');\n'; 
     }
     cpp_source += '\n';
@@ -235,7 +235,7 @@ double randUniform(double x, double y){
         if (func_signature.length == 0){ // 無名のコードブロックの場合
             continue; //func_signature = [random_identifier_name()]; // ランダムな名前の0変数関数として扱う．
         }
-        let args = func_signature.slice(1).map(v => 'Var '+v).join(', ');
+        let args = func_signature.slice(1).map(v => 'const Var &'+v).join(', ');
         cpp_source += 'int '+func_signature[0]+'('+args+'){\n'; 
         cpp_source += indent(snippet, 4);
         cpp_source += indent('return 0;\n', 4);
