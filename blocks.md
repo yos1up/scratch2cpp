@@ -41,7 +41,7 @@ English version is [here](#english).
 
 （すべて つかえます）
 
-* へんすうの なまえには アルファベットだけを つかって ください！ （[日本語の変数名を使いたい方へ](#japanesename)）
+* へんすうの なまえには アルファベットと すうじだけを つかって ください！ （[日本語の変数名を使いたい方へ](#japanesename)）
 
 ### そのた
 
@@ -55,21 +55,7 @@ English version is [here](#english).
 出力されるC++ソースにも日本語の変数名が含まれ，その結果， GCC コンパイラでコンパイルできません（コンパイルエラーが生じます）．
 そのような時は，以下の方法でコンパイルをすることができます．
 
-1. 変換後のC++ソースの冒頭にある `#include <bits/stdc++.h>` という1行を削除して，以下の数行に置き換える：
-
-```
-#include <iostream>
-#include <stdlib.h>
-#include <string>
-#include <vector>
-#include <algorithm>
-#include <math.h>
-```
-
-2. コンパイラを GCC から Clang に変更し（現在の AtCoder の場合，「言語」を "C++14 (Clang 3.8.0)" に変更する），コンパイルを行う．
-
-
-※ 今後の要望次第では， （GCC コンパイラではなく） Clang コンパイラ向けに C++ ソースを出力するように動作を変更する可能性があります．
+* コンパイラを GCC から Clang に変更し（2018年9月現在の AtCoder の場合，「言語」を "C++14 (Clang 3.8.0)" に変更する），コンパイルを行う．
 
 
 <a name="english"></a>
@@ -109,7 +95,7 @@ English version is [here](#english).
 
 (every operator is supported.)
 
-* Make sure that names of variables consist of alphabets and digits! (and the first letter is an alphabet)
+* Make sure that names of variables consist of alphabets and digits!
 
 ### Data
 
