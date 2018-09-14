@@ -25,9 +25,13 @@ if (typeof div !== 'undefined' && div !== null){
     var text = {'ja':'※つかいかた', 'en':'[Usage]'}[lang];
     div.insertAdjacentHTML('beforeend', `<a href="https://chrome.google.com/webstore/detail/scratchers-atcoder/hackndbjgkehhjinjjoldifbhnfddklh" target="_blank">` + text + `</a>&nbsp;&nbsp;&nbsp;&nbsp;`);
 
+    //create and place the link to example project ()
+    var text = {'ja':'※かいとうれい', 'en':'[Example project]'}[lang];
+    div.insertAdjacentHTML('beforeend', `<a href="https://scratch.mit.edu/projects/245115351/" target="_blank">` + text + `</a>`);
+
     //create and place the link to blocks information (https://github.com/yos1up/scratch2cpp/blob/master/blocks.md)
     var text = {'ja':'※つかえるブロックは？', 'en':'[Which blocks are supported?]'}[lang];
-    div.insertAdjacentHTML('beforeend', `<a href="https://github.com/yos1up/scratch2cpp/blob/master/blocks.md" target="_blank">` + text + `</a>`);
+    div.insertAdjacentHTML('beforeend', `<p><a href="https://github.com/yos1up/scratch2cpp/blob/master/blocks.md" target="_blank">` + text + `</a></p>`);
 }
 
 // button for upload => trigger <input type='file'>
@@ -41,7 +45,10 @@ document.getElementById("file-upload-scratch-project").addEventListener("change"
     if (typeof files[0] !== 'undefined'){
         var zip = new JSZip();
         if (typeof zip === 'undefined'){
-            alert('JSZip load failed...');
+            alert({
+                'en':'ERROR: JSZip load failed...',
+                'ja':'エラー: JSZip のロードにしっぱいしました！'
+            }[lang]);
         }else{
             zip.loadAsync(files[0]).then(
                 function(zip) {
