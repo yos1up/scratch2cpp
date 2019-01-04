@@ -2,11 +2,19 @@
 
 for Scratchers who want to participate in programming contests
 
+-----
+
+【Scratch 3.0 への対応について】
+
+対応中です・・・！  （近いうちにここにもう少し状況を詳しく書きます）
+
+-----
+
 ここには，以下の 2 つのものがあります：
 
-1. ローカルで動作する，コード変換ツール． Scratch プロジェクトファイル (.sb2) を C++ ソース (.cpp) に変換できます． （Python3 製です．）
+1. ローカルで動作する，コード変換ツール． Scratch 2.0 プロジェクトファイル (.sb2) を C++ ソース (.cpp) に変換できます． （Python3 製です．）
 
-2. AtCoder に Scratch で参加できるようになる Chrome 拡張． （1 を JavaScript に移植したものが含まれています．）
+2. AtCoder に Scratch 2.0 で参加できるようになる Chrome 拡張． （1 を JavaScript に移植したものが含まれています．）
 
 
 1 については，以下の記述をご覧ください． 2 については， 以下の記述は読まずに `./web/crx/` の階層の README をご覧ください．
