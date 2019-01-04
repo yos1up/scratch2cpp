@@ -3,19 +3,25 @@ var unknown_command_set;
 var name_of_answer_variable = 'buf_answer';
 
 function projectJsonToCpp(projectJsonString){
-    var jsonobj = JSON.parse(projectJsonString);
+    let error_infos = [];
+    const jsonobj = JSON.parse(projectJsonString);
 
     scr_variables = ('variables' in jsonobj) ? jsonobj['variables'] : [];
     scr_lists = ('lists' in jsonobj) ? jsonobj['lists'] : [];
     scr_scripts = [];
-    for (let element of jsonobj['children']){
-        if ('scripts' in element){
-            Array.prototype.push.apply(scr_scripts, element['scripts']);
-        } 
+
+    let validAsSB2 = true;
+    if ('children' in jsonobj){
+        for (let element of jsonobj['children']){
+            if ('scripts' in element){
+                Array.prototype.push.apply(scr_scripts, element['scripts']);
+            } 
+        }
+    }else{
+        validAsSB2 = false;
     }
 
     unknown_command_set = new Set();
-    var error_infos = [];
     var cpp_source = `/* converted by scratch2cpp (https://github.com/yos1up/scratch2cpp)
    This script is compatible with the following compilers:
    - GCC (unless every name of variables contains non-ascii characters)
@@ -228,7 +234,7 @@ double randUniform(double x, double y){
 
 
     // define functions (contents)
-    var existsMain = false;
+    let existsMain = false;
     for (let script of scr_scripts){
         let rslt = convert_script_list(script[2]);
         let snippet = rslt[0];
@@ -244,7 +250,10 @@ double randUniform(double x, double y){
         if (func_signature[0] === 'main') existsMain = true;
     }
 
-    if (!existsMain){
+    if (!validAsSB2){
+        error_infos.push({'code':-1, 'message':'invalid as SB2'});
+        cpp_source = '';
+    } else if (!existsMain){
         error_infos.push({'code':2, 'message':'no entry point'});
     }
     if (unknown_command_set.size > 0){

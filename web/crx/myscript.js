@@ -14,24 +14,28 @@ if (document.body.innerText.indexOf('言語') >= 0) lang = 'ja';
 var div = document.getElementsByClassName("col-sm-3 editor-buttons")[0];
 if (typeof div !== 'undefined' && div !== null){
     // create a button to navigate to Scratch online editor
-    var buttonText = {'ja':'Scratch オンラインエディタ', 'en':'Scratch online editor'}[lang];
-    div.insertAdjacentHTML('beforeend', `<p><button type="button" class="btn btn-default btn-sm " style="background-color: orange; color: white" onclick="window.open('https://scratch.mit.edu/projects/editor/');">` + buttonText + `</button></p>`);
+    // var buttonText = {'ja':'Scratch オンラインエディタ', 'en':'Scratch online editor'}[lang];
+    // div.insertAdjacentHTML('beforeend', `<p><button type="button" class="btn btn-default btn-sm " style="background-color: orange; color: white" onclick="window.open('https://scratch.mit.edu/projects/editor/');">` + buttonText + `</button></p>`);
     
     // create and place the button for upload
-    buttonText = {'ja':'Scratch プロジェクトをロード', 'en':'Load Scratch project'}[lang];
+    buttonText = {'ja':'Scratch 2.0 プロジェクトをロード', 'en':'Load Scratch 2.0 project'}[lang];
     div.insertAdjacentHTML('beforeend', `<p><button id="btn-upload-scratch-project" type="button" class="btn btn-default btn-sm " style="background-color: orange; color: white">` + buttonText + `</button></p>`);
 
     //create and place the link to usage (https://chrome.google.com/webstore/detail/scratchers-atcoder/hackndbjgkehhjinjjoldifbhnfddklh)
-    var text = {'ja':'※つかいかた', 'en':'[Usage]'}[lang];
-    div.insertAdjacentHTML('beforeend', `<a href="https://chrome.google.com/webstore/detail/scratchers-atcoder/hackndbjgkehhjinjjoldifbhnfddklh" target="_blank">` + text + `</a>&nbsp;&nbsp;&nbsp;&nbsp;`);
+    // var text = {'ja':'※つかいかた', 'en':'[Usage]'}[lang];
+    // div.insertAdjacentHTML('beforeend', `<a href="https://chrome.google.com/webstore/detail/scratchers-atcoder/hackndbjgkehhjinjjoldifbhnfddklh" target="_blank">` + text + `</a>&nbsp;&nbsp;&nbsp;&nbsp;`);
 
     //create and place the link to example project ()
-    var text = {'ja':'※かいとうれい', 'en':'[Example project]'}[lang];
-    div.insertAdjacentHTML('beforeend', `<a href="https://scratch.mit.edu/projects/245115351/" target="_blank">` + text + `</a>`);
+    // var text = {'ja':'※かいとうれい', 'en':'[Example project]'}[lang];
+    // div.insertAdjacentHTML('beforeend', `<a href="https://scratch.mit.edu/projects/245115351/" target="_blank">` + text + `</a>`);
 
     //create and place the link to blocks information (https://github.com/yos1up/scratch2cpp/blob/master/blocks.md)
-    var text = {'ja':'※つかえるブロックは？', 'en':'[Which blocks are supported?]'}[lang];
-    div.insertAdjacentHTML('beforeend', `<p><a href="https://github.com/yos1up/scratch2cpp/blob/master/blocks.md" target="_blank">` + text + `</a></p>`);
+    // var text = {'ja':'※つかえるブロックは？', 'en':'[Which blocks are supported?]'}[lang];
+    // div.insertAdjacentHTML('beforeend', `<p><a href="https://github.com/yos1up/scratch2cpp/blob/master/blocks.md" target="_blank">` + text + `</a></p>`);
+
+    //create and place the link to blocks information (https://github.com/yos1up/scratch2cpp/blob/master/blocks.md)
+    var text = {'ja':'Scratch 3.0 へのたいおうについて', 'en':'Is Scratch 3.0 supported?'}[lang];
+    div.insertAdjacentHTML('beforeend', `<p><b><a href="https://github.com/yos1up/scratch2cpp/blob/master/README.md" target="_blank">` + text + `</a></b></p>`);
 }
 
 // button for upload => trigger <input type='file'>
@@ -62,6 +66,12 @@ document.getElementById("file-upload-scratch-project").addEventListener("change"
                                 for (let errorInfo of errorInfos){
                                     var errorMessage = '';
                                     switch (errorInfo['code']){
+                                        case -1:
+                                            errorMessage = {
+                                                'en':'ERROR: Invalid Scratch 2.0 project file! (possibly Scratch 3.0?)',
+                                                'ja':'エラー: ゆうこうな Scratch 2.0 プロジェクトファイルでは ありません！（もしかして Scratch 3.0 ですか？）'
+                                            }[lang];
+                                            break;
                                         case 1:
                                             errorMessage = {
                                                 'en':'WARNING: the following commands are not converted!',
@@ -79,7 +89,8 @@ document.getElementById("file-upload-scratch-project").addEventListener("change"
                                 }
 
                                 // paste to plain editor
-                                document.getElementsByClassName("form-control plain-textarea")[0].value = cppSource;
+                                if (cppSource)
+                                    document.getElementsByClassName("form-control plain-textarea")[0].value = cppSource;
 
                                 { // paste to rich editor
                                     // execute this command in web browser
