@@ -2,7 +2,7 @@
 var inputElem = document.createElement("input");
 inputElem.type = 'file';
 inputElem.id = 'file-upload-scratch-project';
-inputElem.accept = '.sb2';
+inputElem.accept = ['.sb2', '.sb3'];
 inputElem.style.display = 'none';
 document.body.appendChild(inputElem);
 
@@ -60,7 +60,7 @@ document.getElementById("file-upload-scratch-project").addEventListener("change"
                         zip.files['project.json'].async('string').then(
                             function (fileData) {
                                 // convert project.json -> cpp
-                                var rslt = projectJsonToCpp(fileData);
+                                var rslt = sb2ProjectJsonToCpp(fileData);
                                 var cppSource = rslt[0];
                                 var errorInfos = rslt[1];
                                 for (let errorInfo of errorInfos){

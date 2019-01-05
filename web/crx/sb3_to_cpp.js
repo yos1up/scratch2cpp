@@ -1,28 +1,10 @@
 // for reporting
-var unknown_command_set;
-var name_of_answer_variable = 'buf_answer';
+let unknownCommandSet;
+const nameOfAnswerVariable = 'buf_answer';
 
-function sb2ProjectJsonToCpp(projectJsonString){
-    let error_infos = [];
-    const jsonobj = JSON.parse(projectJsonString);
+function sb3ProjectJsonToCpp(projectJsonString) {
 
-    scr_variables = ('variables' in jsonobj) ? jsonobj['variables'] : [];
-    scr_lists = ('lists' in jsonobj) ? jsonobj['lists'] : [];
-    scr_scripts = [];
-
-    let validAsSB2 = true;
-    if ('children' in jsonobj){
-        for (let element of jsonobj['children']){
-            if ('scripts' in element){
-                Array.prototype.push.apply(scr_scripts, element['scripts']);
-            } 
-        }
-    }else{
-        validAsSB2 = false;
-    }
-
-    unknown_command_set = new Set();
-    var cpp_source = `/* converted by scratch2cpp (https://github.com/yos1up/scratch2cpp)
+    let cppSource = `/* converted by scratch2cpp (https://github.com/yos1up/scratch2cpp)
    This script is compatible with the following compilers:
    - GCC (unless every name of variables contains non-ascii characters)
    - Clang 
@@ -195,71 +177,113 @@ double randUniform(double x, double y){
 
 `;
     
-    cpp_source += 'Var ' + name_of_answer_variable + '; // for "answer"\n\n';
 
-    cpp_source += '// ============================= Scripts =============================\n';
+    // return ['/* UNDER CONSTRUCTION */', []];
 
+    let errorInfos = [];
+    const jsonobj = JSON.parse(projectJsonString);
+
+    let validAsSB3 = true;
+    let variables, lists, blocks;
+    if ('targets' in jsonobj) {
+        variables = jsonobj['targets'][0]['variables'];
+        lists = jsonobj['targets'][0]['lists'];
+
+        blocks = jsonobj['targets'][1]['blocks']; // 配置されている全てのブロックの一覧．
+    } else {
+        validAsSB3 = false;
+    }
+
+
+    unknownCommandSet = new Set(); // NOTE: global
+
+    cppSource += 'Var ' + nameOfAnswerVariable + '; // for "answer"\n\n';
+
+    cppSource += '// ============================= Scripts =============================\n';
 
     // declare variables (Var)
-    for (let vari of scr_variables){
-        cpp_source += 'Var '+modify_variable_name(vari['name'])+'('+process_literal(vari['value'])+');\n';
+    for (let varID in variables) {
+        let name = variables[varID][0];
+        let initialValue = variables[varID][1];
+        cppSource += 'Var ' + modifyVariableName(name) + '(' + processLiteral(initialValue) + ');\n';
     }
-    if (scr_variables.length > 0){
-        cpp_source += '\n';
+    if (variables.length > 0) {
+        cppSource += '\n';
     }
 
     // declare variables (vector<Var>)
-    for (let li of scr_lists){
-        cpp_source += 'vector<Var> '+modify_variable_name(li['listName'])+' = {';
-        cpp_source += li['contents'].map(item => 'Var('+process_literal(item)+')').join(', ');
-        cpp_source += '};\n';
+    for (let listID in lists) {
+        let name = lists[listID][0];
+        let initialValue = lists[listID][1];
+        cppSource += 'vector<Var> ' + modifyVariableName(name) + ' = {';
+        cppSource += initialValue.map(item => 'Var(' + processLiteral(item) + ')').join(', ');
+        cppSource += '};\n';
     }
-    if (scr_lists.length > 0){
-        cpp_source += '\n';
+    if (lists.length > 0) {
+        cppSource += '\n';
     }
 
     // define functions (prototype)
-    cpp_source += '// prototype declaration\n';
-    for (let script of scr_scripts){
-        let rslt = convert_script_list(script[2]);
-        let snippet = rslt[0];
-        let func_signature = rslt[1];
-        if (func_signature.length == 0){ // 無名のコードブロックの場合
-            continue; //func_signature = [random_identifier_name()]; // ランダムな名前の0変数関数として扱う．
+    let mainCnt = 0;
+    cppSource += '// prototype declaration\n';
+    for (let blockID in blocks){
+        let block = blocks[blockID];
+        let op = block['opcode'];
+
+        let funcSignature = null;
+        switch (block['opcode']) {
+            case 'event_whenflagclicked':
+                funcSignature = ['main'];
+                mainCnt++;
+                break;
+            case 'procedures_definition':
+                let procProtoBlockID = block['inputs']['custom_block'][1];
+                let funcName = modifyFunctionName(blocks[procProtoBlockID]['mutation']['proccode'].split(' ')[0]);
+                let argnames = JSON.parse(blocks[procProtoBlockID]['mutation']['argumentnames']);
+                argNames = argnames.map(modifyVariableName);
+                funcSignature = [funcName].concat(argNames);
+                break;
         }
-        let args = func_signature.slice(1).map(v => 'const Var &'+v).join(', ');
-        cpp_source += 'int '+func_signature[0]+'('+args+');\n'; 
+
+        if (funcSignature) {
+            let args = funcSignature.slice(1).map(v => 'const Var &'+v).join(', ');
+            cppSource += 'int '+funcSignature[0]+'('+args+');\n'; 
+        }
     }
-    cpp_source += '\n';
+    cppSource += '\n';
 
 
     // define functions (contents)
-    let existsMain = false;
-    for (let script of scr_scripts){
-        let rslt = convert_script_list(script[2]);
-        let snippet = rslt[0];
-        let func_signature = rslt[1];
-        if (func_signature.length == 0){ // 無名のコードブロックの場合
-            continue; //func_signature = [random_identifier_name()]; // ランダムな名前の0変数関数として扱う．
+    for (let blockID in blocks){
+        switch (blocks[blockID]['opcode']) {
+            case 'event_whenflagclicked':
+            case 'procedures_definition':
+                let rslt = convertFrom(blockID, blocks);
+                // cppSource に足す．
+                let snippet = rslt[0];
+                let funcSignature = rslt[1];
+                let args = funcSignature.slice(1).map(v => 'const Var &'+v).join(', ');
+                cppSource += 'int '+funcSignature[0]+'('+args+'){\n'; 
+                cppSource += indent(snippet, 4);
+                cppSource += indent('return 0;\n', 4);
+                cppSource += '}\n\n';
+                break;
         }
-        let args = func_signature.slice(1).map(v => 'const Var &'+v).join(', ');
-        cpp_source += 'int '+func_signature[0]+'('+args+'){\n'; 
-        cpp_source += indent(snippet, 4);
-        cpp_source += indent('return 0;\n', 4);
-        cpp_source += '}\n\n';
-        if (func_signature[0] === 'main') existsMain = true;
     }
 
-    if (!validAsSB2){
-        error_infos.push({'code':-1, 'message':'invalid as SB2'});
-        cpp_source = '';
-    } else if (!existsMain){
-        error_infos.push({'code':2, 'message':'no entry point'});
+
+    if (!validAsSB3){
+        errorInfos.push({'code':-1, 'message':'invalid as SB3'});
+        cppSource = '';
+    } else if (mainCnt === 0){
+        errorInfos.push({'code':2, 'message':'no entry point'});
+    } else if (mainCnt > 1){
+        errorInfos.push({'code':3, 'message':'multiple entry points'});
     }
-    if (unknown_command_set.size > 0){
-        error_infos.push({'code':1, 'message':Array.from(unknown_command_set).join(',')});
+    if (unknownCommandSet.size > 0){
+        errorInfos.push({'code':1, 'message':Array.from(unknownCommandSet).join(',')});
     }
-    return [cpp_source, error_infos];
+    return [cppSource, errorInfos];
 }
 
 
@@ -268,7 +292,7 @@ double randUniform(double x, double y){
 
 
 
-function process_literal(obj){
+function processLiteral(obj){
     /*
     obj <str/int/float>
     returns <str>
@@ -287,7 +311,7 @@ function process_literal(obj){
     }
 }
 
-function modify_variable_name(name){
+function modifyVariableName(name){
     /*
     variable name in Scratch is arbitrary,
     so there's need to change it so that
@@ -296,7 +320,7 @@ function modify_variable_name(name){
     return 'var_' + name;
 }
 
-function modify_function_name(name){
+function modifyFunctionName(name){
     return 'func_' + name;
 }
 
@@ -326,6 +350,25 @@ function indent(snippet, num_space){
     return lines.map(line => spaces + line + '\n').join('');
 }
 
+function convertFrom(blockID, allBlocksInfo) {
+    /*
+    Args:
+        blockID (str)
+            its element is block
+        allBlocksInfo (dict)
+
+
+    Returns:
+        [
+            snippet <str>: code
+            func_signature <list of str>:
+                (if not method) []
+                (if method) ['method_name', 'arg_name', 'arg_name', ...]
+        ]
+    '*/
+    return ['/* UNDER CONSTRUCTION */', ['hoge']];
+}
+
 function convert_script_list(script_list){
     /*
     script_list <list>: its element is block
@@ -342,7 +385,7 @@ function convert_script_list(script_list){
         func_signature = ['main'];
         offset = 1;
     }else if (script_list[0][0] == 'procDef'){
-        func_signature = [modify_function_name(script_list[0][1].split(' ')[0])].concat(script_list[0][2].map(modify_argument_name));
+        func_signature = [modifyFunctionName(script_list[0][1].split(' ')[0])].concat(script_list[0][2].map(modify_argument_name));
         offset = 1;
     }
 
@@ -366,14 +409,14 @@ function convert_block(block){
     list of opcode: https://en.scratch-wiki.info/wiki/Scratch_File_Format/Block_Selectors
     */
     if (['number', 'string'].indexOf(typeof block) >= 0){
-        return 'Var(' + process_literal(block) + ')';
+        return 'Var(' + processLiteral(block) + ')';
     }
     var com = block[0];
     if (com === 'setVar:to:'){
         // TODO: do we need to pass by value instead of pass by reference? <= ex. increment ??
-        return modify_variable_name(block[1]) + ' = ' + convert_block(block[2]) + ';\n';
+        return modifyVariableName(block[1]) + ' = ' + convert_block(block[2]) + ';\n';
     }else if (com === 'readVariable'){
-        return modify_variable_name(block[1]);
+        return modifyVariableName(block[1]);
     }else if (['+','-','*','/','%','>','<'].indexOf(com) >= 0){
         return '(' + convert_block(block[1]) + com + convert_block(block[2]) + ')';
     }else if (com === '='){
@@ -398,7 +441,7 @@ function convert_block(block){
                 + indent(convert_script_list(block[1])[0], 4)
                 + '}\n';
     }else if (com === 'changeVar:by:'){
-        return modify_variable_name(block[1]) + '+=' + convert_block(block[2]) + ';\n';
+        return modifyVariableName(block[1]) + '+=' + convert_block(block[2]) + ';\n';
     }else if (com === 'answer'){
         return name_of_answer_variable;
     }else if (com === 'rounded'){
@@ -432,34 +475,34 @@ function convert_block(block){
     }else if (com === 'think:'){
         return 'cerr << '+convert_block(block[1])+' << "\\n";\n';
     }else if (com === 'lineCountOfList:'){
-        return 'Var('+modify_variable_name(block[1])+'.size())';
+        return 'Var('+modifyVariableName(block[1])+'.size())';
     }else if (com === 'append:toList:'){ 
-        return modify_variable_name(block[2])+'.push_back('+convert_block(block[1])+');\n';
+        return modifyVariableName(block[2])+'.push_back('+convert_block(block[1])+');\n';
     }else if (com === 'getLine:ofList:'){
-        return 'getLineOfList(' + convert_block(block[1]) + ', ' + modify_variable_name(block[2]) + ')';
+        return 'getLineOfList(' + convert_block(block[1]) + ', ' + modifyVariableName(block[2]) + ')';
     }else if (com === 'setLine:ofList:to:'){
-        return 'setLineOfListTo(' + convert_block(block[1]) + ', ' + modify_variable_name(block[2]) + ', ' + convert_block(block[3]) + ');\n';
+        return 'setLineOfListTo(' + convert_block(block[1]) + ', ' + modifyVariableName(block[2]) + ', ' + convert_block(block[3]) + ');\n';
     }else if (com === 'list:contains:'){
-        var li = modify_variable_name(block[1]);
+        var li = modifyVariableName(block[1]);
         return '(find('+li+'.begin(), '+li+'.end(), '+convert_block(block[2])+') != '+li+'.end())';
     }else if (com === 'deleteLine:ofList:'){
         if (block[1] === 'all'){
-            return modify_variable_name(block[2])+'.clear();\n';
+            return modifyVariableName(block[2])+'.clear();\n';
         }else if (block[1] === 'last'){
-            return modify_variable_name(block[2])+'.pop_back();\n';
+            return modifyVariableName(block[2])+'.pop_back();\n';
         }else{ // by index
-            return 'deleteLineOfList(' + convert_block(block[1]) + ',' + modify_variable_name(block[2]) + ');\n';
+            return 'deleteLineOfList(' + convert_block(block[1]) + ',' + modifyVariableName(block[2]) + ');\n';
         }
     }else if (com === 'insert:at:ofList:'){
         if (block[2] === 'last'){
-            return modify_variable_name(block[3])+'.push_back('+convert_block(block[1])+');\n';
+            return modifyVariableName(block[3])+'.push_back('+convert_block(block[1])+');\n';
         }else if (block[2] === 'random'){
-            return 'insertAtRandomOfList(' + convert_block(block[1]) + ',' + modify_variable_name(block[3]) + ');\n';
+            return 'insertAtRandomOfList(' + convert_block(block[1]) + ',' + modifyVariableName(block[3]) + ');\n';
         }else{
-            return 'insertAtIndexOfList(' + convert_block(block[1]) + ',' + convert_block(block[2]) + ',' + modify_variable_name(block[3]) + ');\n';
+            return 'insertAtIndexOfList(' + convert_block(block[1]) + ',' + convert_block(block[2]) + ',' + modifyVariableName(block[3]) + ');\n';
         } 
     }else if (com === 'contentsOfList:'){
-        return 'contentsOfList(' + modify_variable_name(block[1]) + ')';
+        return 'contentsOfList(' + modifyVariableName(block[1]) + ')';
     }else if (com === 'stringLength:'){
         return 'Var(' + convert_block(block[1]) + '.asString().size())';
     }else if (com === 'letter:of:'){
@@ -469,7 +512,7 @@ function convert_block(block){
     }else if (com === 'call'){
         var func_name = block[1].split(' ')[0];
         var args = block.slice(2).map(convert_block).join(',');
-        return modify_function_name(func_name)+'('+args+');\n';
+        return modifyFunctionName(func_name)+'('+args+');\n';
     }else if (com === 'stopScripts'){
         return 'return 0;\n';
     }else{
