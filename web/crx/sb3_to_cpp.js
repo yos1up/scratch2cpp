@@ -1,5 +1,6 @@
 // for reporting
 let unknownCommandSet;
+let nonAsciiIdentifierSet;
 const nameOfAnswerVariable = 'buf_answer';
 
 function sb3ProjectJsonToCpp(projectJsonString) {
@@ -196,10 +197,11 @@ double randUniform(double x, double y){
 
 
     unknownCommandSet = new Set(); // NOTE: global
+    nonAsciiIdentifierSet = new Set(); // NOTE: global
 
     cppSource += 'Var ' + nameOfAnswerVariable + '; // for "answer"\n\n';
 
-    cppSource += '// ============================= Scripts =============================\n';
+    cppSource += '// ============================= Scripts =============================\n\n';
 
     // declare variables (Var)
     for (let varID in variables) {
@@ -207,7 +209,7 @@ double randUniform(double x, double y){
         let initialValue = variables[varID][1];
         cppSource += 'Var ' + modifyVariableName(name) + '(' + processLiteral(initialValue) + ');\n';
     }
-    if (variables.length > 0) {
+    if (Object.keys(variables).length > 0) {
         cppSource += '\n';
     }
 
@@ -219,57 +221,36 @@ double randUniform(double x, double y){
         cppSource += initialValue.map(item => 'Var(' + processLiteral(item) + ')').join(', ');
         cppSource += '};\n';
     }
-    if (lists.length > 0) {
+    if (Object.keys(lists).length > 0) {
         cppSource += '\n';
     }
 
-    // define functions (prototype)
+    // TODO: 未使用変数を宣言しないようにしたい．（"var_つくったへんすう" とか）
+
+    // These are appended to cppSource finally.．
+    let funcPrototypeSource = "// prototype declaration\n";
+    let funcContentSource = "";
+
     let mainCnt = 0;
-    cppSource += '// prototype declaration\n';
-    for (let blockID in blocks){
-        let block = blocks[blockID];
-        let op = block['opcode'];
-
-        let funcSignature = null;
-        switch (block['opcode']) {
-            case 'event_whenflagclicked':
-                funcSignature = ['main'];
-                mainCnt++;
-                break;
-            case 'procedures_definition':
-                let procProtoBlockID = block['inputs']['custom_block'][1];
-                let funcName = modifyFunctionName(blocks[procProtoBlockID]['mutation']['proccode'].split(' ')[0]);
-                let argnames = JSON.parse(blocks[procProtoBlockID]['mutation']['argumentnames']);
-                argNames = argnames.map(modifyVariableName);
-                funcSignature = [funcName].concat(argNames);
-                break;
-        }
-
-        if (funcSignature) {
-            let args = funcSignature.slice(1).map(v => 'const Var &'+v).join(', ');
-            cppSource += 'int '+funcSignature[0]+'('+args+');\n'; 
-        }
-    }
-    cppSource += '\n';
-
-
-    // define functions (contents)
     for (let blockID in blocks){
         switch (blocks[blockID]['opcode']) {
             case 'event_whenflagclicked':
+                mainCnt++;
             case 'procedures_definition':
                 let rslt = convertFrom(blockID, blocks);
-                // cppSource に足す．
                 let snippet = rslt[0];
                 let funcSignature = rslt[1];
                 let args = funcSignature.slice(1).map(v => 'const Var &'+v).join(', ');
-                cppSource += 'int '+funcSignature[0]+'('+args+'){\n'; 
-                cppSource += indent(snippet, 4);
-                cppSource += indent('return 0;\n', 4);
-                cppSource += '}\n\n';
+                funcPrototypeSource += 'int '+funcSignature[0]+'('+args+');\n'; 
+                funcContentSource += 'int '+funcSignature[0]+'('+args+'){\n'; 
+                funcContentSource += indent(snippet, 4);
+                funcContentSource += indent('return 0;\n', 4);
+                funcContentSource += '}\n\n';
                 break;
         }
     }
+
+    cppSource += funcPrototypeSource + '\n' + funcContentSource;
 
 
     if (!validAsSB3){
@@ -282,6 +263,9 @@ double randUniform(double x, double y){
     }
     if (unknownCommandSet.size > 0){
         errorInfos.push({'code':1, 'message':Array.from(unknownCommandSet).join(',')});
+    }
+    if (nonAsciiIdentifierSet.size > 0){
+        errorInfos.push({'code':4, 'message':Array.from(nonAsciiIdentifierSet).join(',')});
     }
     return [cppSource, errorInfos];
 }
@@ -317,14 +301,20 @@ function modifyVariableName(name){
     so there's need to change it so that
     C++ accepts.
     */
+    if (isNonAscii(name)) nonAsciiIdentifierSet.add(name);
+    // TODO: 識別子名に + とか入ってるケース
     return 'var_' + name;
 }
 
 function modifyFunctionName(name){
+    if (isNonAscii(name)) nonAsciiIdentifierSet.add(name);
+    // TODO: 識別子名に + とか入ってるケース
     return 'func_' + name;
 }
 
-function modify_argument_name(name){
+function modifyArgumentName(name){
+    if (isNonAscii(name)) nonAsciiIdentifierSet.add(name);
+    // TODO: 識別子名に + とか入ってるケース
     return 'arg_' + name;
 }
 
@@ -332,7 +322,7 @@ function getRandomInt(max) {
   return Math.floor(Math.random() * Math.floor(max));
 }
 
-function random_identifier_name(){
+function randomIdentifierName(){
     var ret = '';
     for(let i=0;i<8;i++) ret += String.fromCharCode('a'.charCodeAt(0) + getRandomInt(26));
     return ret;
@@ -356,174 +346,296 @@ function convertFrom(blockID, allBlocksInfo) {
         blockID (str)
             its element is block
         allBlocksInfo (dict)
-
+            dict-object which contains all blocks information
 
     Returns:
         [
-            snippet <str>: code
-            func_signature <list of str>:
+            snippet <str>: code (if method, method signature is not included)
+            funcSignature <list of str>:
                 (if not method) []
                 (if method) ['method_name', 'arg_name', 'arg_name', ...]
         ]
     '*/
-    return ['/* UNDER CONSTRUCTION */', ['hoge']];
-}
+    let snippet = '';
+    let funcSignature = [];
+    if (blockID) {
+        try {
+            const blockInfo = allBlocksInfo[blockID];
+            const opcode = blockInfo['opcode'];
 
-function convert_script_list(script_list){
-    /*
-    script_list <list>: its element is block
-    returns:
-        snippet <str>: code
-        func_signature <list of str>:
-            (if not method) []
-            (if method) ['method_name', 'arg_name', 'arg_name', ...]
-    '*/
-    var func_signature = [];
-    var snippet = '';
-    var offset = 0;
-    if (script_list[0][0] == 'whenGreenFlag'){
-        func_signature = ['main'];
-        offset = 1;
-    }else if (script_list[0][0] == 'procDef'){
-        func_signature = [modifyFunctionName(script_list[0][1].split(' ')[0])].concat(script_list[0][2].map(modify_argument_name));
-        offset = 1;
-    }
+            let variableName, conditionBlockID, substackBlockID, innerSnippet, value, value2,
+                procProtoBlockID, funcName, argNames;
+            
+            switch (opcode) {
+                case 'argument_reporter_string_number':
+                    snippet = modifyArgumentName(blockInfo['fields']['VALUE'][0]);
+                    break;
+                case 'control_forever':
+                    // substackBlockID = blockInfo['inputs']['SUBSTACK'][1]; // TODO この二行も processValue にできる？
+                    // innerSnippet = convertFrom(substackBlockID, allBlocksInfo)[0]; 
+                    innerSnippet = processValueInfo(blockInfo['inputs']['SUBSTACK'], allBlocksInfo);
+                    snippet = 'while (1){\n' + indent(innerSnippet, 4) + '}\n';
+                    break;
+                case 'control_repeat':
+                    // substackBlockID = blockInfo['inputs']['SUBSTACK'][1]; // TODO この二行も processValue にできる？
+                    // innerSnippet = convertFrom(substackBlockID, allBlocksInfo)[0]; 
+                    innerSnippet = processValueInfo(blockInfo['inputs']['SUBSTACK'], allBlocksInfo);
+                    let cntName = randomIdentifierName();
+                    snippet = `for (int ${cntName}=0;${cntName}<${processValueInfo(blockInfo['inputs']['TIMES'], allBlocksInfo)}.asNumber();${cntName}++){\n` + indent(innerSnippet, 4) + '}\n';
+                    break;
+                case 'control_repeat_until':
+                    // substackBlockID = blockInfo['inputs']['SUBSTACK'][1]; // TODO この二行も processValue にできる？
+                    // innerSnippet = convertFrom(substackBlockID, allBlocksInfo)[0]; 
+                    innerSnippet = processValueInfo(blockInfo['inputs']['SUBSTACK'], allBlocksInfo);
+                    snippet = `while (!${processValueInfo(blockInfo['inputs']['CONDITION'], allBlocksInfo)}){\n` + indent(innerSnippet, 4) + '}\n';
+                    break;
+                case 'control_if':
+                    // substackBlockID = blockInfo['inputs']['SUBSTACK'][1]; // TODO この二行も processValue にできる？
+                    // innerSnippet = convertFrom(substackBlockID, allBlocksInfo)[0]; 
+                    innerSnippet = processValueInfo(blockInfo['inputs']['SUBSTACK'], allBlocksInfo);
+                    snippet = `if (${processValueInfo(blockInfo['inputs']['CONDITION'], allBlocksInfo)}){\n` + indent(innerSnippet, 4) + '}\n';
+                    break;
+                case 'control_if_else':
+                    innerSnippet = processValueInfo(blockInfo['inputs']['SUBSTACK1'], allBlocksInfo);
+                    snippet = `if (${processValueInfo(blockInfo['inputs']['CONDITION'], allBlocksInfo)}){\n` + indent(innerSnippet, 4) + '} else {\n';
+                    innerSnippet = processValueInfo(blockInfo['inputs']['SUBSTACK2'], allBlocksInfo);
+                    snippet += indent(innerSnippet, 4) + '}\n';
+                    break;
+                case 'control_stop':
+                    snippet = 'return 0;\n';
+                    break;
+                case 'event_whenflagclicked':
+                    funcSignature = ['main'];
+                    break;
+                case 'data_setvariableto':
+                    variableName = modifyVariableName(blockInfo['fields']['VARIABLE'][0]);
+                    value = processValueInfo(blockInfo['inputs']['VALUE'], allBlocksInfo);
+                    snippet = `${variableName} = ${value};\n`;
+                    break;
+                case 'data_changevariableby':
+                    variableName = modifyVariableName(blockInfo['fields']['VARIABLE'][0]);
+                    value = processValueInfo(blockInfo['inputs']['VALUE'], allBlocksInfo);
+                    snippet = `${variableName} += ${value};\n`;
+                    break;
+                case 'data_deleteoflist':
+                    variableName = modifyVariableName(blockInfo['fields']['LIST'][0]);
+                    if (blockInfo['inputs']['INDEX'][1][1] === 'all'){
+                        snippet = `${variableName}.clear();\n`;
+                    } else {
+                        snippet = '/* (data_deleteoflist) */';
+                        console.log(snippet);
+                        console.log(blockInfo);
+                    } // TODO: last, by index
+                    break;
+                // case 'data_deletealloflist':
+                // case 'data_insertatlist':
+                // case 'data_contentsoflist': // 消えた？
+                // case 'data_itemnumoflist': // 新作
+                case 'data_addtolist':
+                    variableName = modifyVariableName(blockInfo['fields']['LIST'][0]);
+                    value = processValueInfo(blockInfo['inputs']['ITEM'], allBlocksInfo);
+                    snippet = `${variableName}.push_back(${value});\n`;
+                    break;
+                case 'data_lengthoflist':
+                    variableName = modifyVariableName(blockInfo['fields']['LIST'][0]);
+                    snippet = `Var(${variableName}.size())`;
+                    break;
+                case 'data_itemoflist':
+                    variableName = modifyVariableName(blockInfo['fields']['LIST'][0]);
+                    value = processValueInfo(blockInfo['inputs']['INDEX'], allBlocksInfo);
+                    snippet = `getLineOfList(${value}, ${variableName})`;
+                    break;
+                case 'data_replaceitemoflist':
+                    variableName = modifyVariableName(blockInfo['fields']['LIST'][0]);
+                    value = processValueInfo(blockInfo['inputs']['INDEX'], allBlocksInfo);
+                    value2 = processValueInfo(blockInfo['inputs']['ITEM'], allBlocksInfo);
+                    snippet = `setLineOfListTo(${value}, ${variableName}, ${value2});\n`;
+                    break;
+                case 'data_listcontainsitem':
+                    variableName = modifyVariableName(blockInfo['fields']['LIST'][0]);
+                    value = processValueInfo(blockInfo['inputs']['ITEM'], allBlocksInfo);
+                    snippet = `(find(${variableName}.begin(), ${variableName}.end(), ${value}) != ${variableName}.end())`;
+                    break;
+                case 'looks_say':
+                    value = processValueInfo(blockInfo['inputs']['MESSAGE'], allBlocksInfo);
+                    snippet = `cout << ${value} << endl;\n`;
+                    break;
+                case 'looks_think':
+                    value = processValueInfo(blockInfo['inputs']['MESSAGE'], allBlocksInfo);
+                    snippet = `cerr << ${value} << endl;\n`;
+                    break;
+                case 'operator_add':
+                    value = processValueInfo(blockInfo['inputs']['NUM1'], allBlocksInfo);
+                    value2 = processValueInfo(blockInfo['inputs']['NUM2'], allBlocksInfo);
+                    snippet = `(${value} + ${value2})`;
+                    break;
+                case 'operator_subtract':
+                    value = processValueInfo(blockInfo['inputs']['NUM1'], allBlocksInfo);
+                    value2 = processValueInfo(blockInfo['inputs']['NUM2'], allBlocksInfo);
+                    snippet = `(${value} - ${value2})`;
+                    break;
+                case 'operator_multiply':
+                    value = processValueInfo(blockInfo['inputs']['NUM1'], allBlocksInfo);
+                    value2 = processValueInfo(blockInfo['inputs']['NUM2'], allBlocksInfo);
+                    snippet = `(${value} * ${value2})`;
+                    break;
+                case 'operator_divide':
+                    value = processValueInfo(blockInfo['inputs']['NUM1'], allBlocksInfo);
+                    value2 = processValueInfo(blockInfo['inputs']['NUM2'], allBlocksInfo);
+                    snippet = `(${value} / ${value2})`;
+                    break;
+                case 'operator_mod':
+                    value = processValueInfo(blockInfo['inputs']['NUM1'], allBlocksInfo);
+                    value2 = processValueInfo(blockInfo['inputs']['NUM2'], allBlocksInfo);
+                    snippet = `(${value} % ${value2})`;
+                    break;
+                case 'operator_round':
+                    value = processValueInfo(blockInfo['inputs']['NUM'], allBlocksInfo);
+                    snippet = `Var(round(${value}.asNumber()))`;
+                    break;
+                case 'operator_mathop':
+                    value = processValueInfo(blockInfo['inputs']['NUM'], allBlocksInfo);
+                    let opName = blockInfo['fields']['OPERATOR'][0];
+                    if (opName === '10 ^'){
+                        snippet = `Var(pow(10.0, ${value}.asNumber()))`;
+                    } else {
+                        let dic = {'abs':'fabs', 'ceiling':'ceil', 'ln':'log', 'log':'log10', 'e ^':'exp'};
+                        if (opName in dic) opName = dic[opName];
+                        snippet = `Var(${opName}(${value}.asNumber()))`;
+                    }
+                    break;
+                case 'operator_random':
+                    value = processValueInfo(blockInfo['inputs']['FROM'], allBlocksInfo);
+                    value2 = processValueInfo(blockInfo['inputs']['TO'], allBlocksInfo);
+                    snippet = `Var(randUniform(${value}.asNumber(), ${value2}.asNumber()))`;
+                    break;
+                case 'operator_or':
+                    value = processValueInfo(blockInfo['inputs']['OPERAND1'], allBlocksInfo);
+                    value2 = processValueInfo(blockInfo['inputs']['OPERAND2'], allBlocksInfo);
+                    snippet = `(${value} || ${value2})`;
+                    break;
+                case 'operator_and':
+                    value = processValueInfo(blockInfo['inputs']['OPERAND1'], allBlocksInfo);
+                    value2 = processValueInfo(blockInfo['inputs']['OPERAND2'], allBlocksInfo);
+                    snippet = `(${value} && ${value2})`;
+                    break; 
+                case 'operator_not':
+                    value = processValueInfo(blockInfo['inputs']['OPERAND'], allBlocksInfo);
+                    snippet = `(!${value})`;
+                    break; 
+                case 'operator_join':
+                    value = processValueInfo(blockInfo['inputs']['STRING1'], allBlocksInfo);
+                    value2 = processValueInfo(blockInfo['inputs']['STRING2'], allBlocksInfo);
+                    snippet = `Var(${value}.asString() + ${value2}.asString())`;
+                    break;
+                case 'operator_letter_of':
+                    value = processValueInfo(blockInfo['inputs']['LETTER'], allBlocksInfo);
+                    value2 = processValueInfo(blockInfo['inputs']['STRING'], allBlocksInfo);
+                    snippet = `letterOf(${value}, ${value2})`;
+                    break;
+                case 'operator_length': // 文字列変数の長さ
+                    // TODO: vector<Var> に対しては，それを string にキャストしてからその長さを返す必要がある
+                    // （現状，それをやろうとするとコンパイルエラーが出る）
+                    // ヒント：そろそろ vector<Var> をクラス VarList にした方が良い．
 
-    for (var block of script_list.slice(offset)){
-        snippet += convert_block(block);
-    }
-
-    // add semicolon to non-sentence snippet
-    if (snippet != '' && snippet.charAt(snippet.length-1) != '\n') snippet += ';\n';
-
-    return [snippet, func_signature];
-}
-
-
-
-function convert_block(block){
-    /*
-    block: ['name of command', args...]
-    returns <str>: code snippet (C++)．
-
-    list of opcode: https://en.scratch-wiki.info/wiki/Scratch_File_Format/Block_Selectors
-    */
-    if (['number', 'string'].indexOf(typeof block) >= 0){
-        return 'Var(' + processLiteral(block) + ')';
-    }
-    var com = block[0];
-    if (com === 'setVar:to:'){
-        // TODO: do we need to pass by value instead of pass by reference? <= ex. increment ??
-        return modifyVariableName(block[1]) + ' = ' + convert_block(block[2]) + ';\n';
-    }else if (com === 'readVariable'){
-        return modifyVariableName(block[1]);
-    }else if (['+','-','*','/','%','>','<'].indexOf(com) >= 0){
-        return '(' + convert_block(block[1]) + com + convert_block(block[2]) + ')';
-    }else if (com === '='){
-        return '(' + convert_block(block[1]) + ' == ' + convert_block(block[2]) + ')';
-    }else if (com === '&'){
-        return '(' + convert_block(block[1]) + ' && ' + convert_block(block[2]) + ')';
-    }else if (com === '|'){
-        return '(' + convert_block(block[1]) + ' || ' + convert_block(block[2]) + ')';
-    }else if (com === 'not'){
-        return '(!' + convert_block(block[1]) + ')';
-    }else if (com === 'doRepeat'){
-        var counter_name = random_identifier_name();
-        return 'for (int '+counter_name+'=0;'+counter_name+'<'+convert_block(block[1])+'.asNumber();'+counter_name+'++){\n'
-                + indent(convert_script_list(block[2])[0], 4)
-                + '}\n';
-    }else if (com === 'doUntil'){
-        return 'while (!('+convert_block(block[1])+')){\n'
-                + indent(convert_script_list(block[2])[0], 4)
-                + '}\n';
-    }else if (com === 'doForever'){
-        return 'while (1){\n'
-                + indent(convert_script_list(block[1])[0], 4)
-                + '}\n';
-    }else if (com === 'changeVar:by:'){
-        return modifyVariableName(block[1]) + '+=' + convert_block(block[2]) + ';\n';
-    }else if (com === 'answer'){
-        return name_of_answer_variable;
-    }else if (com === 'rounded'){
-        return 'Var(round(' + convert_block(block[1]) + '.asNumber()))';
-    }else if (com === 'randomFrom:to:'){
-        return 'Var(randUniform(' + convert_block(block[1]) + '.asNumber(), ' + convert_block(block[2]) + '.asNumber()))';
-    }else if (com === 'computeFunction:of:'){
-        var func_name = block[1];
-        if (func_name === '10 ^'){
-            return 'Var(pow(10.0, ' + convert_block(block[2]) + '.asNumber()))';
+                    // variableName = modifyVariableName(blockInfo['inputs']['STRING'][1][1]);
+                    // snippet = `Var(${variableName}.asString().size())`;
+                    value = processValueInfo(blockInfo['inputs']['STRING'], allBlocksInfo);
+                    snippet = `Var(${value}.asString().size())`;
+                    break;
+                case 'operator_contains': // 文字列が文字列を連続部分文字列として含むか否か
+                    // TODO: vector<Var> に対しては，それを string にキャストしてから動作するのだと思う
+                    // （現状，それをやろうとするとコンパイルエラーが出る）
+                    // ヒント：そろそろ vector<Var> をクラス VarList にした方が良い．
+                    value = processValueInfo(blockInfo['inputs']['STRING1'], allBlocksInfo);
+                    value2 = processValueInfo(blockInfo['inputs']['STRING2'], allBlocksInfo);
+                    snippet = `(${value}.asString().find(${value2}.asString()) != string::npos)`;
+                    break;
+                case 'operator_equals':
+                    value = processValueInfo(blockInfo['inputs']['OPERAND1'], allBlocksInfo);
+                    value2 = processValueInfo(blockInfo['inputs']['OPERAND2'], allBlocksInfo);
+                    snippet = `(${value} == ${value2})`;
+                    break;
+                case 'operator_lt':
+                    value = processValueInfo(blockInfo['inputs']['OPERAND1'], allBlocksInfo);
+                    value2 = processValueInfo(blockInfo['inputs']['OPERAND2'], allBlocksInfo);
+                    snippet = `(${value} < ${value2})`;
+                    break;
+                case 'operator_gt':
+                    value = processValueInfo(blockInfo['inputs']['OPERAND1'], allBlocksInfo);
+                    value2 = processValueInfo(blockInfo['inputs']['OPERAND2'], allBlocksInfo);
+                    snippet = `(${value} > ${value2})`;
+                    break;
+                case 'sensing_askandwait':
+                    snippet = `cin >> ${nameOfAnswerVariable};\n`;
+                    break;
+                case 'sensing_answer':
+                    snippet = nameOfAnswerVariable;
+                    break;
+                case 'procedures_call':
+                    funcName = modifyFunctionName(blockInfo['mutation']['proccode'].split(' ')[0]);
+                    value = [];
+                    for(let i=0;;i++){
+                        if (`input${i}` in blockInfo['inputs']){
+                            value.push(processValueInfo(blockInfo['inputs'][`input${i}`], allBlocksInfo));
+                        } else break;
+                    }
+                    snippet = funcName + '(' + value.join(', ') + ');\n';
+                    break;
+                case 'procedures_definition':
+                    procProtoBlockID = blockInfo['inputs']['custom_block'][1];
+                    funcName = modifyFunctionName(allBlocksInfo[procProtoBlockID]['mutation']['proccode'].split(' ')[0]);
+                    argNames = JSON.parse(allBlocksInfo[procProtoBlockID]['mutation']['argumentnames']);
+                    argNames = argNames.map(modifyArgumentName);
+                    funcSignature = [funcName].concat(argNames);
+                    break;
+                // case 'procedures_prototype': // procedures_definition の中で処理される．
+                default:
+                    snippet = `/* UNKNOWN: ${opcode} */`;
+                    console.log(snippet);
+                    console.log(blockInfo);
+                    unknownCommandSet.add(opcode);
+                    break;
+            }
+        } catch (e) {
+            console.error("[Error] " + e.message);
+            console.log(`blockID: ${blockID}`);
+            console.log(allBlocksInfo[blockID]);
+            snippet = `/* ERROR: ${allBlocksInfo[blockID]['opcode']} */`;
         }
-        dic = {'abs':'fabs', 'ceiling':'ceil', 'ln':'log', 'log':'log10', 'e ^':'exp'};
-        if (func_name in dic) func_name = dic[func_name];
-        return 'Var(' + func_name + '(' + convert_block(block[2]) + '.asNumber()))';
-    }else if (com === 'concatenate:with:'){
-        return 'Var(' + convert_block(block[1]) + '.asString() + ' + convert_block(block[2]) + '.asString())';
-    }else if (com === 'doIf'){
-        return 'if ('+convert_block(block[1])+'){\n'
-                + indent(convert_script_list(block[2])[0], 4)
-                + '}\n';
-    }else if (com === 'doIfElse'){
-        return 'if ('+convert_block(block[1])+'){\n'
-                + indent(convert_script_list(block[2])[0], 4)
-                + '}else{\n'
-                + indent(convert_script_list(block[3])[0], 4)
-                + '}\n';
-    }else if (com === 'doAsk'){
-        return 'cin >> '+name_of_answer_variable+';\n';
-    }else if (com === 'say:'){
-        return 'cout << '+convert_block(block[1])+' << "\\n";\n';
-    }else if (com === 'think:'){
-        return 'cerr << '+convert_block(block[1])+' << "\\n";\n';
-    }else if (com === 'lineCountOfList:'){
-        return 'Var('+modifyVariableName(block[1])+'.size())';
-    }else if (com === 'append:toList:'){ 
-        return modifyVariableName(block[2])+'.push_back('+convert_block(block[1])+');\n';
-    }else if (com === 'getLine:ofList:'){
-        return 'getLineOfList(' + convert_block(block[1]) + ', ' + modifyVariableName(block[2]) + ')';
-    }else if (com === 'setLine:ofList:to:'){
-        return 'setLineOfListTo(' + convert_block(block[1]) + ', ' + modifyVariableName(block[2]) + ', ' + convert_block(block[3]) + ');\n';
-    }else if (com === 'list:contains:'){
-        var li = modifyVariableName(block[1]);
-        return '(find('+li+'.begin(), '+li+'.end(), '+convert_block(block[2])+') != '+li+'.end())';
-    }else if (com === 'deleteLine:ofList:'){
-        if (block[1] === 'all'){
-            return modifyVariableName(block[2])+'.clear();\n';
-        }else if (block[1] === 'last'){
-            return modifyVariableName(block[2])+'.pop_back();\n';
-        }else{ // by index
-            return 'deleteLineOfList(' + convert_block(block[1]) + ',' + modifyVariableName(block[2]) + ');\n';
+
+        //「次の処理」が存在する場合
+        let nextBlockID = allBlocksInfo[blockID]['next'];
+        if (nextBlockID) {
+            snippet += convertFrom(nextBlockID, allBlocksInfo)[0];
         }
-    }else if (com === 'insert:at:ofList:'){
-        if (block[2] === 'last'){
-            return modifyVariableName(block[3])+'.push_back('+convert_block(block[1])+');\n';
-        }else if (block[2] === 'random'){
-            return 'insertAtRandomOfList(' + convert_block(block[1]) + ',' + modifyVariableName(block[3]) + ');\n';
-        }else{
-            return 'insertAtIndexOfList(' + convert_block(block[1]) + ',' + convert_block(block[2]) + ',' + modifyVariableName(block[3]) + ');\n';
-        } 
-    }else if (com === 'contentsOfList:'){
-        return 'contentsOfList(' + modifyVariableName(block[1]) + ')';
-    }else if (com === 'stringLength:'){
-        return 'Var(' + convert_block(block[1]) + '.asString().size())';
-    }else if (com === 'letter:of:'){
-        return 'letterOf(' + convert_block(block[1]) +  ',' + convert_block(block[2]) + ')';
-    }else if (com === 'getParam'){
-        return modify_argument_name(block[1]);
-    }else if (com === 'call'){
-        var func_name = block[1].split(' ')[0];
-        var args = block.slice(2).map(convert_block).join(',');
-        return modifyFunctionName(func_name)+'('+args+');\n';
-    }else if (com === 'stopScripts'){
-        return 'return 0;\n';
-    }else{
-        unknown_command_set.add(com);
-        return '/* [unknown] ' + JSON.stringify(block) + ' *'+'/';
     }
+    return [snippet, funcSignature];
 }
 
 
+function processValueInfo(valueInfo, allBlocksInfo) {
+    if (!valueInfo) return '';
+    switch (valueInfo[0]) {
+        case 3: // other block, or variable
+        case 2: // CONDITION だとこのパターンもある？
+            if (typeof valueInfo[1] === 'string'){ // other block
+                return convertFrom(valueInfo[1], allBlocksInfo)[0];
+            } else { // variable
+                return modifyVariableName(valueInfo[1][1]);
+            }
+        case 1: // literal
+            return `Var(${processLiteral(valueInfo[1][1])})`;
+        default:
+            console.log(`UNKNOWN VALUE TYPE: ${valueInfo[0]}`);
+    }  
+}
 
 
+function isNonAscii(name) {
+    /* returns whether the string contains non-ascii characters */
+    return !name.match(/^[\x20-\x7e]*$/);
+}
 
 
 

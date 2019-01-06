@@ -60,7 +60,7 @@ document.getElementById("file-upload-scratch-project").addEventListener("change"
                         zip.files['project.json'].async('string').then(
                             function (fileData) {
                                 // convert project.json -> cpp
-                                var rslt = sb2ProjectJsonToCpp(fileData);
+                                var rslt = sb3ProjectJsonToCpp(fileData);
                                 var cppSource = rslt[0];
                                 var errorInfos = rslt[1];
                                 for (let errorInfo of errorInfos){
@@ -68,8 +68,8 @@ document.getElementById("file-upload-scratch-project").addEventListener("change"
                                     switch (errorInfo['code']){
                                         case -1:
                                             errorMessage = {
-                                                'en':'ERROR: Invalid Scratch 2.0 project file! (possibly Scratch 3.0?)',
-                                                'ja':'エラー: ゆうこうな Scratch 2.0 プロジェクトファイルでは ありません！（もしかして Scratch 3.0 ですか？）'
+                                                'en':'ERROR: Invalid Scratch 3.0 project file! (possibly Scratch 2.0?)',
+                                                'ja':'エラー: ゆうこうな Scratch 3.0 プロジェクトファイルではありません！（もしかして Scratch 2.0 ですか？）'
                                             }[lang];
                                             break;
                                         case 1:
@@ -82,6 +82,18 @@ document.getElementById("file-upload-scratch-project").addEventListener("change"
                                             errorMessage = {
                                                 'en':'ERROR: No entry point found. Please use a "when [Flag] clicked" block to specify the entry point.',
                                                 'ja':'エラー: プログラムのかいしちてんがわかりません！「（はた）がクリックされたとき」ブロックを、はいちしてください！'
+                                            }[lang];
+                                            break;
+                                        case 3:
+                                            errorMessage = {
+                                                'en':'ERROR: Multiple entry points found. Please use ONE "when [Flag] clicked" block.',
+                                                'ja':'エラー: プログラムのかいしちてんが 2 ついじょうあります！「（はた）がクリックされたとき」ブロックは、1 つにしてください！'
+                                            }[lang];
+                                            break;
+                                        case 4:
+                                            errorMessage = {
+                                                'en':'CAUTION: Non-ascii characters are used in identifiers. Please select Clang compiler (C++14 (Clang 3.8.0)) to compile it correctly.',
+                                                'ja':'ちゅうい: へんすうめいに アスキーもじ いがいが ふくまれるため、Clang コンパイラ (C++14 (Clang 3.8.0)) をせんたくしてください！'
                                             }[lang];
                                             break;
                                     }
