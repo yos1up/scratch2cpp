@@ -3,6 +3,10 @@
 
 ## Installation
 
+This Chrome extension is released at the [web store](https://chrome.google.com/webstore/detail/scratchers-atcoder/hackndbjgkehhjinjjoldifbhnfddklh). You can install it from there. 
+
+Alternatively, you can install it manually:
+
 1. Clone or download this directory
 
 2. Launch Google Chrome and go to Window -> Extensions
