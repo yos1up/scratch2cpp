@@ -1,14 +1,36 @@
 // for reporting
 let unknownCommandSet;
 let nonAsciiIdentifierSet;
+let usedVariableSet, usedListSet;
 const nameOfAnswerVariable = 'buf_answer';
 
 function sb3ProjectJsonToCpp(projectJsonString) {
+    /*
+    convert `project.json` string to C++ script string.
 
-    let cppSource = `/* converted by scratch2cpp (https://github.com/yos1up/scratch2cpp)
-   This script is compatible with the following compilers:
-   - GCC (unless every name of variables contains non-ascii characters)
-   - Clang 
+    Args:
+        projectJsonString (str):
+            content of file `project.json`, obtained by unzipping .sb3
+
+    Returns:
+        [
+            - cppSource (str):
+                self-contained C++ script.
+
+            - errorInfos (Array of strings):
+                [
+                    {
+                        - 'code' (int):
+                            error code.
+                        - 'message' (str):
+                            support message.
+                    }, ...
+                ]
+        ]
+    */
+
+    let cppSource = `/*
+    Converted by scratch2cpp (https://github.com/yos1up/scratch2cpp).
 */
 #include <iostream>
 #include <stdlib.h>
@@ -26,7 +48,7 @@ static int roundToInt(double x){
 }
 
 
-class Var{
+class Var{ // NOTE: immutable
 public:
     string sval;
     double dval;
@@ -129,41 +151,69 @@ Var letterOf(Var index, Var sourceString){
     return Var();
 }
 
-// TODO: should we make a new class for vector<Var>?
-Var getLineOfList(const Var &index, const vector<Var> &list){
-    /* index: 1-origined */
-    int idx = (int)index.asNumber() - 1;
-    // (unlike 'letterOf', index==0.9 does not work.)
-    if (0 <= idx && idx < list.size()) return list[idx];
-    return Var();
-}
-void setLineOfListTo(const Var &index, vector<Var> &list, const Var &v){
-    /* index: 1-origined */
-    int idx = (int)index.asNumber() - 1;
-    if (0 <= idx && idx < list.size()) list[idx] = v;
-}
-void deleteLineOfList(const Var &index, vector<Var> &list){
-    /* index: 1-origined */
-    int idx = (int)index.asNumber() - 1;
-    if (0 <= idx && idx < list.size()) list.erase(list.begin() + idx);
-}
-void insertAtIndexOfList(const Var &item, const Var &index, vector<Var> &list){
-    /* index: 1-origined */
-    int idx = (int)index.asNumber() - 1;
-    if (0 <= idx && idx <= list.size()) list.insert(list.begin() + idx, item);   
-}
-void insertAtRandomOfList(const Var &item, vector<Var> &list){
-    int idx = rand() % (list.size() + 1);
-    list.insert(list.begin() + idx, item);
-}
-Var contentsOfList(const vector<Var> &list){
-    /* concatenate elements of list with space */
-    string ret;
-    for(int i=0;i<list.size();i++){
-        if (i > 0) ret += ' ';
-        ret += list[i].asString();
+class VarList{
+public:
+    vector<Var> data;
+    VarList(const vector<Var> &x) { data = x; }
+    void push_back(const Var &x){ data.push_back(x); }
+    void pop_back(){ data.pop_back(); }
+    void clear(){ data.clear(); }
+    int size(){ return (int) data.size(); }
+    Var getLineOfList(const Var &index) const{
+        /* index: 1-origined */
+        int idx = (int)index.asNumber() - 1;
+        // (unlike 'letterOf', index==0.9 does not work.)
+        if (0 <= idx && idx < data.size()) return data[idx];
+        return Var();
     }
-    return Var(ret);
+    void setLineOfListTo(const Var &index, const Var &v){
+        /* index: 1-origined */
+        int idx = (int)index.asNumber() - 1;
+        if (0 <= idx && idx < data.size()) data[idx] = v;
+    }
+    void deleteLineOfList(const Var &index){
+        /* index: 1-origined */
+        string kwd = index.asString();
+        if (kwd == "all"){
+            data.clear();
+        }else if (kwd == "last"){
+            data.pop_back();
+        }else{
+            int idx = (int)index.asNumber() - 1;
+            if (0 <= idx && idx < data.size()) data.erase(data.begin() + idx);
+        }
+    }
+    void insertAtIndexOfList(const Var &item, const Var &index){
+        /* index: 1-origined */
+        int idx = (int)index.asNumber() - 1;
+        if (0 <= idx && idx <= data.size()) data.insert(data.begin() + idx, item);   
+    }
+    void insertAtRandomOfList(const Var &item){
+        int idx = rand() % (data.size() + 1);
+        data.insert(data.begin() + idx, item);
+    }
+    string asString() const{
+        /* concatenate elements of list with space */
+        // TODO: concatenated without spaces only if all elements are single characters.
+        // (Is it an official bug? (or feature?))
+        string ret;
+        for(int i=0;i<data.size();i++){
+            if (i > 0) ret += ' ';
+            ret += data[i].asString();
+        }
+        return ret;        
+    }
+    int itemNumOfList(const Var &item) const{
+        auto itr = find(data.begin(), data.end(), item);
+        if (itr == data.end()) return 0;
+        return 1 + (int)(itr - data.begin());
+        /* index: 1-origined */
+    }
+    friend ostream& operator << (ostream& os, const VarList& p);
+};
+ostream& operator << (ostream& os, const VarList& p){
+    os << p.asString();
+    return os;
 }
 
 double randUniform(double x, double y){
@@ -177,9 +227,6 @@ double randUniform(double x, double y){
 }
 
 `;
-    
-
-    // return ['/* UNDER CONSTRUCTION */', []];
 
     let errorInfos = [];
     const jsonobj = JSON.parse(projectJsonString);
@@ -195,41 +242,23 @@ double randUniform(double x, double y){
         validAsSB3 = false;
     }
 
+    // NOTE: these variables are global.
+    unknownCommandSet = new Set();
+    nonAsciiIdentifierSet = new Set();
+    usedVariableSet = new Set();
+    usedListSet = new Set();
 
-    unknownCommandSet = new Set(); // NOTE: global
-    nonAsciiIdentifierSet = new Set(); // NOTE: global
 
     cppSource += 'Var ' + nameOfAnswerVariable + '; // for "answer"\n\n';
-
     cppSource += '// ============================= Scripts =============================\n\n';
 
-    // declare variables (Var)
-    for (let varID in variables) {
-        let name = variables[varID][0];
-        let initialValue = variables[varID][1];
-        cppSource += 'Var ' + modifyVariableName(name) + '(' + processLiteral(initialValue) + ');\n';
-    }
-    if (Object.keys(variables).length > 0) {
-        cppSource += '\n';
-    }
-
-    // declare variables (vector<Var>)
-    for (let listID in lists) {
-        let name = lists[listID][0];
-        let initialValue = lists[listID][1];
-        cppSource += 'vector<Var> ' + modifyVariableName(name) + ' = {';
-        cppSource += initialValue.map(item => 'Var(' + processLiteral(item) + ')').join(', ');
-        cppSource += '};\n';
-    }
-    if (Object.keys(lists).length > 0) {
-        cppSource += '\n';
-    }
-
-    // TODO: 未使用変数を宣言しないようにしたい．（"var_つくったへんすう" とか）
 
     // These are appended to cppSource finally.．
-    let funcPrototypeSource = "// prototype declaration\n";
-    let funcContentSource = "";
+    let variableDeclareSource = "// variable declaration\n";
+    let listDeclareSource = "// list declaration\n";
+    let funcPrototypeSource = "// prototype declaration of functions\n";
+    let funcContentSource = "// contents of functions\n";
+
 
     let mainCnt = 0;
     for (let blockID in blocks){
@@ -250,8 +279,33 @@ double randUniform(double x, double y){
         }
     }
 
-    cppSource += funcPrototypeSource + '\n' + funcContentSource;
 
+    // declare variables (Var)
+    for (let varID in variables) {
+        let name = variables[varID][0];
+        if (!usedVariableSet.has(name)) continue;
+        let initialValue = variables[varID][1];
+        variableDeclareSource += 'Var ' + modifyVariableName(name) + '(' + processLiteral(initialValue) + ');\n';
+    }
+
+    // declare variables (vector<Var>)
+    for (let listID in lists) {
+        let name = lists[listID][0];
+        if (!usedListSet.has(name)) continue;
+        let initialValue = lists[listID][1];
+        listDeclareSource += 'VarList ' + modifyListName(name) + '({';
+        listDeclareSource += initialValue.map(item => 'Var(' + processLiteral(item) + ')').join(', ');
+        listDeclareSource += '});\n';
+    }
+
+    // NOTE: 未使用変数は C++ コード上では宣言されないようになっている．
+    //（Scratch3.0 ではデフォルトで "つくったへんすう" という名前の変数が宣言だけされているが，
+    // この名前の変数が C++ コードに毎回登場するのを避けたい（非ascii文字がありGCCでコンパイルできなくなる）
+
+    cppSource +=  variableDeclareSource + '\n'
+                + listDeclareSource + '\n'
+                + funcPrototypeSource + '\n'
+                + funcContentSource;
 
     if (!validAsSB3){
         errorInfos.push({'code':-1, 'message':'invalid as SB3'});
@@ -269,12 +323,6 @@ double randUniform(double x, double y){
     }
     return [cppSource, errorInfos];
 }
-
-
-
-
-
-
 
 function processLiteral(obj){
     /*
@@ -301,21 +349,25 @@ function modifyVariableName(name){
     so there's need to change it so that
     C++ accepts.
     */
-    if (isNonAscii(name)) nonAsciiIdentifierSet.add(name);
-    // TODO: 識別子名に + とか入ってるケース
-    return 'var_' + name;
+    usedVariableSet.add(name);
+    if (hasNonAscii(name)) nonAsciiIdentifierSet.add(name);
+    return 'var_' + escapeInvalidAscii(name);
+}
+
+function modifyListName(name){
+    usedListSet.add(name);
+    if (hasNonAscii(name)) nonAsciiIdentifierSet.add(name);
+    return 'list_' + escapeInvalidAscii(name);
 }
 
 function modifyFunctionName(name){
-    if (isNonAscii(name)) nonAsciiIdentifierSet.add(name);
-    // TODO: 識別子名に + とか入ってるケース
-    return 'func_' + name;
+    if (hasNonAscii(name)) nonAsciiIdentifierSet.add(name);
+    return 'func_' + escapeInvalidAscii(name);
 }
 
 function modifyArgumentName(name){
-    if (isNonAscii(name)) nonAsciiIdentifierSet.add(name);
-    // TODO: 識別子名に + とか入ってるケース
-    return 'arg_' + name;
+    if (hasNonAscii(name)) nonAsciiIdentifierSet.add(name);
+    return 'arg_' + escapeInvalidAscii(name);
 }
 
 function getRandomInt(max) {
@@ -330,8 +382,11 @@ function randomIdentifierName(){
 
 function indent(snippet, num_space){
     /*
-    snippet <str> : every row in it has return code.
-    num_space <int>: >= 0 
+    Args:
+        snippet <str> : every row in it has return code.
+        num_space <int>: >= 0 
+    Returns:
+        (str) indented snippet.
     */
     if (snippet == '') return '';
     var lines = snippet.split('\n');
@@ -363,7 +418,7 @@ function convertFrom(blockID, allBlocksInfo) {
             const blockInfo = allBlocksInfo[blockID];
             const opcode = blockInfo['opcode'];
 
-            let variableName, conditionBlockID, substackBlockID, innerSnippet, value, value2,
+            let variableName, listName, conditionBlockID, substackBlockID, innerSnippet, value, value2,
                 procProtoBlockID, funcName, argNames;
             
             switch (opcode) {
@@ -371,32 +426,24 @@ function convertFrom(blockID, allBlocksInfo) {
                     snippet = modifyArgumentName(blockInfo['fields']['VALUE'][0]);
                     break;
                 case 'control_forever':
-                    // substackBlockID = blockInfo['inputs']['SUBSTACK'][1]; // TODO この二行も processValue にできる？
-                    // innerSnippet = convertFrom(substackBlockID, allBlocksInfo)[0]; 
                     innerSnippet = processValueInfo(blockInfo['inputs']['SUBSTACK'], allBlocksInfo);
                     snippet = 'while (1){\n' + indent(innerSnippet, 4) + '}\n';
                     break;
                 case 'control_repeat':
-                    // substackBlockID = blockInfo['inputs']['SUBSTACK'][1]; // TODO この二行も processValue にできる？
-                    // innerSnippet = convertFrom(substackBlockID, allBlocksInfo)[0]; 
                     innerSnippet = processValueInfo(blockInfo['inputs']['SUBSTACK'], allBlocksInfo);
                     let cntName = randomIdentifierName();
                     snippet = `for (int ${cntName}=0;${cntName}<${processValueInfo(blockInfo['inputs']['TIMES'], allBlocksInfo)}.asNumber();${cntName}++){\n` + indent(innerSnippet, 4) + '}\n';
                     break;
                 case 'control_repeat_until':
-                    // substackBlockID = blockInfo['inputs']['SUBSTACK'][1]; // TODO この二行も processValue にできる？
-                    // innerSnippet = convertFrom(substackBlockID, allBlocksInfo)[0]; 
                     innerSnippet = processValueInfo(blockInfo['inputs']['SUBSTACK'], allBlocksInfo);
                     snippet = `while (!${processValueInfo(blockInfo['inputs']['CONDITION'], allBlocksInfo)}){\n` + indent(innerSnippet, 4) + '}\n';
                     break;
                 case 'control_if':
-                    // substackBlockID = blockInfo['inputs']['SUBSTACK'][1]; // TODO この二行も processValue にできる？
-                    // innerSnippet = convertFrom(substackBlockID, allBlocksInfo)[0]; 
                     innerSnippet = processValueInfo(blockInfo['inputs']['SUBSTACK'], allBlocksInfo);
                     snippet = `if (${processValueInfo(blockInfo['inputs']['CONDITION'], allBlocksInfo)}){\n` + indent(innerSnippet, 4) + '}\n';
                     break;
                 case 'control_if_else':
-                    innerSnippet = processValueInfo(blockInfo['inputs']['SUBSTACK1'], allBlocksInfo);
+                    innerSnippet = processValueInfo(blockInfo['inputs']['SUBSTACK'], allBlocksInfo); // not SUBSTACK1
                     snippet = `if (${processValueInfo(blockInfo['inputs']['CONDITION'], allBlocksInfo)}){\n` + indent(innerSnippet, 4) + '} else {\n';
                     innerSnippet = processValueInfo(blockInfo['inputs']['SUBSTACK2'], allBlocksInfo);
                     snippet += indent(innerSnippet, 4) + '}\n';
@@ -418,43 +465,53 @@ function convertFrom(blockID, allBlocksInfo) {
                     snippet = `${variableName} += ${value};\n`;
                     break;
                 case 'data_deleteoflist':
-                    variableName = modifyVariableName(blockInfo['fields']['LIST'][0]);
-                    if (blockInfo['inputs']['INDEX'][1][1] === 'all'){
-                        snippet = `${variableName}.clear();\n`;
-                    } else {
-                        snippet = '/* (data_deleteoflist) */';
-                        console.log(snippet);
-                        console.log(blockInfo);
-                    } // TODO: last, by index
-                    break;
-                // case 'data_deletealloflist':
-                // case 'data_insertatlist':
-                // case 'data_contentsoflist': // 消えた？
-                // case 'data_itemnumoflist': // 新作
-                case 'data_addtolist':
-                    variableName = modifyVariableName(blockInfo['fields']['LIST'][0]);
-                    value = processValueInfo(blockInfo['inputs']['ITEM'], allBlocksInfo);
-                    snippet = `${variableName}.push_back(${value});\n`;
-                    break;
-                case 'data_lengthoflist':
-                    variableName = modifyVariableName(blockInfo['fields']['LIST'][0]);
-                    snippet = `Var(${variableName}.size())`;
-                    break;
-                case 'data_itemoflist':
-                    variableName = modifyVariableName(blockInfo['fields']['LIST'][0]);
+                    listName = modifyListName(blockInfo['fields']['LIST'][0]);
                     value = processValueInfo(blockInfo['inputs']['INDEX'], allBlocksInfo);
-                    snippet = `getLineOfList(${value}, ${variableName})`;
+                    // NOTE: 「"all" 番目を削除する」が動的に生じうる
+                    // （「("a"と"ll")番目を削除」で全削除の挙動になった．）
+                    // （「("las"と"t")番目を削除」で最終要素削除の挙動になった．）
+                    snippet = `${listName}.deleteLineOfList(${value});\n`;
                     break;
-                case 'data_replaceitemoflist':
-                    variableName = modifyVariableName(blockInfo['fields']['LIST'][0]);
+                case 'data_deletealloflist':
+                    listName = modifyListName(blockInfo['fields']['LIST'][0]);
+                    snippet = `${listName}.clear();\n`;
+                    break;
+                case 'data_insertatlist':
+                    listName = modifyListName(blockInfo['fields']['LIST'][0]);
                     value = processValueInfo(blockInfo['inputs']['INDEX'], allBlocksInfo);
                     value2 = processValueInfo(blockInfo['inputs']['ITEM'], allBlocksInfo);
-                    snippet = `setLineOfListTo(${value}, ${variableName}, ${value2});\n`;
+                    snippet = `${listName}.insertAtIndexOfList(${value}, ${value2});\n`;
+                    break;
+                // case 'data_contentsoflist': // .sb3 で消えた？（.sb2 から引き継がれたプロジェクトにのみ残存しうる？）
+                case 'data_itemnumoflist': // .sb3 で新登場
+                    listName = modifyListName(blockInfo['fields']['LIST'][0]);
+                    value = processValueInfo(blockInfo['inputs']['ITEM'], allBlocksInfo);
+                    snippet = `Var(${listName}.itemNumOfList(${value}))`;                   
+                    break;
+                case 'data_addtolist':
+                    listName = modifyListName(blockInfo['fields']['LIST'][0]);
+                    value = processValueInfo(blockInfo['inputs']['ITEM'], allBlocksInfo);
+                    snippet = `${listName}.push_back(${value});\n`;
+                    break;
+                case 'data_lengthoflist':
+                    listName = modifyListName(blockInfo['fields']['LIST'][0]);
+                    snippet = `Var(${listName}.size())`;
+                    break;
+                case 'data_itemoflist':
+                    listName = modifyListName(blockInfo['fields']['LIST'][0]);
+                    value = processValueInfo(blockInfo['inputs']['INDEX'], allBlocksInfo);
+                    snippet = `${listName}.getLineOfList(${value})`;
+                    break;
+                case 'data_replaceitemoflist':
+                    listName = modifyListName(blockInfo['fields']['LIST'][0]);
+                    value = processValueInfo(blockInfo['inputs']['INDEX'], allBlocksInfo);
+                    value2 = processValueInfo(blockInfo['inputs']['ITEM'], allBlocksInfo);
+                    snippet = `${listName}.setLineOfListTo(${value}, ${value2});\n`;
                     break;
                 case 'data_listcontainsitem':
-                    variableName = modifyVariableName(blockInfo['fields']['LIST'][0]);
+                    listName = modifyListName(blockInfo['fields']['LIST'][0]);
                     value = processValueInfo(blockInfo['inputs']['ITEM'], allBlocksInfo);
-                    snippet = `(find(${variableName}.begin(), ${variableName}.end(), ${value}) != ${variableName}.end())`;
+                    snippet = `(${listName}.itemNumOfList(${value}) != 0)`;
                     break;
                 case 'looks_say':
                     value = processValueInfo(blockInfo['inputs']['MESSAGE'], allBlocksInfo);
@@ -534,19 +591,12 @@ function convertFrom(blockID, allBlocksInfo) {
                     snippet = `letterOf(${value}, ${value2})`;
                     break;
                 case 'operator_length': // 文字列変数の長さ
-                    // TODO: vector<Var> に対しては，それを string にキャストしてからその長さを返す必要がある
-                    // （現状，それをやろうとするとコンパイルエラーが出る）
-                    // ヒント：そろそろ vector<Var> をクラス VarList にした方が良い．
-
-                    // variableName = modifyVariableName(blockInfo['inputs']['STRING'][1][1]);
-                    // snippet = `Var(${variableName}.asString().size())`;
+                    // NOTE: Var にも VarList にも .asString() がある．
                     value = processValueInfo(blockInfo['inputs']['STRING'], allBlocksInfo);
                     snippet = `Var(${value}.asString().size())`;
                     break;
                 case 'operator_contains': // 文字列が文字列を連続部分文字列として含むか否か
-                    // TODO: vector<Var> に対しては，それを string にキャストしてから動作するのだと思う
-                    // （現状，それをやろうとするとコンパイルエラーが出る）
-                    // ヒント：そろそろ vector<Var> をクラス VarList にした方が良い．
+                    // NOTE: Var にも VarList にも .asString() がある．
                     value = processValueInfo(blockInfo['inputs']['STRING1'], allBlocksInfo);
                     value2 = processValueInfo(blockInfo['inputs']['STRING2'], allBlocksInfo);
                     snippet = `(${value}.asString().find(${value2}.asString()) != string::npos)`;
@@ -589,7 +639,7 @@ function convertFrom(blockID, allBlocksInfo) {
                     argNames = argNames.map(modifyArgumentName);
                     funcSignature = [funcName].concat(argNames);
                     break;
-                // case 'procedures_prototype': // procedures_definition の中で処理される．
+                // case 'procedures_prototype': // procedures_definition の中で処理されるためここでは記述不要．
                 default:
                     snippet = `/* UNKNOWN: ${opcode} */`;
                     console.log(snippet);
@@ -632,9 +682,37 @@ function processValueInfo(valueInfo, allBlocksInfo) {
 }
 
 
-function isNonAscii(name) {
+function hasNonAscii(name) {
     /* returns whether the string contains non-ascii characters */
     return !name.match(/^[\x20-\x7e]*$/);
+}
+
+function escapeInvalidAscii(name){
+    /* 
+        Escape ascii characters invalid for C++ identifier name, as following:
+
+        ' ' => "_20"
+        '~' => "_7e"
+
+        The underscore is also escaped, for preventing collisions:
+
+        '_' => "__"
+    */
+
+    let ret = '';
+    for(let c of name){
+        if (c === '_'){
+            ret += '__';
+        } else {
+            const code = c.charCodeAt(0);
+            if (('0' <= c && c <= '9') || ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z') || 256 <= code){
+                ret += c;
+            } else {
+                ret += '_' + ('0' + code.toString(16)).substr(-2);
+            }
+        }
+    }
+    return ret;
 }
 
 
