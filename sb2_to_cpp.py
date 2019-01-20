@@ -296,7 +296,9 @@ public:
         //note:
         //§7.22.1.3 (N1570)
         //If the result underflows (7.12.1); whether errno acquires the value ERANGE is implementation-defined.
-        return !(0 == re && s.c_str() == ep) && 0 == errno;
+        //Scratch 3.0 recognize the string cause underflows or overflows as Numeric so that we ignore when `errno` is ERANGE
+        if(ERANGE == errno) errno = 0;
+        return !(0 == re && s.c_str() == ep) && 0 == errno && NULL != ep && '\0' == ep[0];
     }
     bool isNumeric() const{
         if (type == NUMBER) return true;
