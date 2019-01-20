@@ -296,8 +296,7 @@ public:
         //note:
         //§7.22.1.3 (N1570)
         //If the result underflows (7.12.1); whether errno acquires the value ERANGE is implementation-defined.
-        return !(0 == re && s.c_str() == ep) || 0 == errno;
-        // TODO: In Scratch '000' is regarded as non-numeric (but here regarded as numeric)
+        return !(0 == re && s.c_str() == ep) && 0 == errno;
     }
     bool isNumeric() const{
         if (type == NUMBER) return true;
