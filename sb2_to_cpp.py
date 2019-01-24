@@ -290,9 +290,10 @@ public:
     }
     static bool isNumericString(const string &s) {
         char* ep;
+        //cause side-effect: errno can be ERANGE after calling strtod
         strtod(s.c_str(), &ep);
-        return !ep || !*ep;
-        // TODO: In Scratch '000' is regarded as non-numeric (but here regarded as numeric)
+        //Scratch 3.0 recognize the string cause underflows or overflows as Numeric
+        return s[0] != '\0' && NULL != ep && '\0' == ep[0];
     }
     bool isNumeric() const{
         if (type == NUMBER) return true;
