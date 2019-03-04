@@ -30,7 +30,7 @@ function sb3ProjectJsonToCpp(projectJsonString) {
     */
 
     let cppSource = `/*
-    Converted by scratch2cpp (https://github.com/yos1up/scratch2cpp).
+    Converted from Scratch by scratch2cpp (https://github.com/yos1up/scratch2cpp).
 */
 #include <iostream>
 #include <stdlib.h>
@@ -308,6 +308,10 @@ double randUniform(double x, double y){
                 + listDeclareSource + '\n'
                 + funcPrototypeSource + '\n'
                 + funcContentSource;
+
+    // AtCoder 上での「バイト数」を 100 の倍数に正規化する処理
+    //（「提出一覧」から scratch2cpp で生成されたコードを発見しやすくするための処置です）
+    cppSource = makeByteLengthNice(cppSource);
 
     if (!validAsSB3){
         errorInfos.push({'code':-1, 'message':'invalid as SB3'});
@@ -717,5 +721,36 @@ function escapeInvalidAscii(name){
     return ret;
 }
 
+function getUTF8Length(s) {
+    var len = 0;
+    for (var i = 0; i < s.length; i++) {
+        var code = s.charCodeAt(i);
+        if (code <= 0x7f) {
+            len += 1;
+        } else if (code <= 0x7ff) {
+            len += 2;
+        } else if (code >= 0xd800 && code <= 0xdfff) {
+            // Surrogate pair: These take 4 bytes in UTF-8 and 2 chars in UCS-2
+            // (Assume next char is the other [valid] half and just skip it)
+            len += 4; i++;
+        } else if (code < 0xffff) {
+            len += 3;
+        } else {
+            len += 4;
+        }
+    }
+    return len;
+}
 
+function makeByteLengthNice(src){
+    /*
+        与えられた文字列 src に対して以下の処理を施します
+        ・改行コードを \r\n に変更する．（AtCoder の web から提出するとソース中の改行コードが \r\n になる関係で）
+        ・その上で，バイト数が 100 の倍数になるように半角スペースを付け加える．
+    */
+    src = src.replace(new RegExp('\r\n', 'g'), '\n').replace(new RegExp('\n', 'g'), `\r\n`);
+    const padSize = (-getUTF8Length(src) % 100 + 100) % 100;
+    for(let i=0;i<padSize;i++) src += ' ';
+    return src;
+}
 
