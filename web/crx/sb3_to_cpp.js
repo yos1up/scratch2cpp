@@ -39,14 +39,10 @@ function sb3ProjectJsonToCpp(projectJsonString) {
 #include <algorithm>
 #include <math.h>
 #define debug cerr << "--" << __LINE__ << "--" << "\\n"
+typedef long long ll;
 using namespace std;
 
 const double EPS = 1e-8;
-
-static int roundToInt(double x){
-    return (x < 0) ? -(int)(-x + 0.5) : (int)(x + 0.5);
-}
-
 
 class Var{ // NOTE: immutable
 public:
@@ -94,7 +90,7 @@ public:
     }
     string asString() const{
         if (type == STRING) return sval;
-        if (isNearInteger(dval)) return to_string(roundToInt(dval));
+        if (isNearInteger(dval)) return to_string((ll)round(dval));
         return to_string(dval);
     }
     Var operator+(const Var &y) const{
@@ -221,7 +217,7 @@ ostream& operator << (ostream& os, const VarList& p){
 double randUniform(double x, double y){
     if (x > y) return randUniform(y, x);
     if (Var::isNearInteger(x) && Var::isNearInteger(y)){
-        int xi = roundToInt(x), yi = roundToInt(y);
+        ll xi = (ll)round(x), yi = (ll)round(y);
         return xi + rand() % (yi - xi + 1);
     }else{
         return x + (y - x) * (0.0 + rand()) / RAND_MAX;
@@ -631,10 +627,10 @@ function convertFrom(blockID, allBlocksInfo) {
                 case 'procedures_call':
                     funcName = modifyFunctionName(blockInfo['mutation']['proccode'].split(' ')[0]);
                     value = [];
-                    for(let i=0;;i++){
-                        if (`input${i}` in blockInfo['inputs']){
-                            value.push(processValueInfo(blockInfo['inputs'][`input${i}`], allBlocksInfo));
-                        } else break;
+                    const argIDs = JSON.parse(blockInfo['mutation']['argumentids']);
+                    for(let i=0;i<argIDs.length;i++){
+                        console.log(blockInfo['inputs'][argIDs[i]]);
+                        value.push(processValueInfo(blockInfo['inputs'][argIDs[i]], allBlocksInfo));
                     }
                     snippet = funcName + '(' + value.join(', ') + ');\n';
                     break;
@@ -698,7 +694,7 @@ function escapeInvalidAscii(name){
         Escape ascii characters invalid for C++ identifier name, as following:
 
         ' ' => "_20"
-        '~' => "_7e"
+        '~' => "_7e" (and so on)
 
         The underscore is also escaped, for preventing collisions:
 
