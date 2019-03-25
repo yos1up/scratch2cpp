@@ -81,6 +81,7 @@ public:
         if (type == NUMBER) return dval;
         return (isNumeric()) ? atof(sval.c_str()) : 0.0;
     }
+    /*
     static bool isNearInteger(const double &x){
         return fabs(round(x) - x) < EPS;
         // TODO: allow integer type in Var class
@@ -88,9 +89,10 @@ public:
     static bool isNearNumber(const double &x, const double &y){
         return fabs(x - y) < EPS;
     }
+    */
     string asString() const{
         if (type == STRING) return sval;
-        if (isNearInteger(dval)) return to_string((ll)round(dval));
+        if (floor(dval) == dval) return to_string((ll)round(dval));
         return to_string(dval);
     }
     Var operator+(const Var &y) const{
@@ -216,7 +218,7 @@ ostream& operator << (ostream& os, const VarList& p){
 
 double randUniform(double x, double y){
     if (x > y) return randUniform(y, x);
-    if (Var::isNearInteger(x) && Var::isNearInteger(y)){
+    if (floor(x) == x && floor(y) == y){
         ll xi = (ll)round(x), yi = (ll)round(y);
         return xi + rand() % (yi - xi + 1);
     }else{
@@ -336,6 +338,12 @@ function processLiteral(obj){
     */
     if (typeof obj == 'string'){
         if ($.isNumeric(obj)){
+            // ここで obj === "0431" の時，文字列 0431 が返るとマズい
+            // C++ はリテラル "0431" を八進数として解釈するが，Scratch は十進数として解釈する．
+            // 一方 Scratch でも C++ でもリテラル "0xFF" は 255 と解釈される．
+
+            // use Number() ?
+
             return obj;
         }else{
             return '"' + obj + '"';
