@@ -53,9 +53,9 @@ class Sb3ToCppConverter {
         */
         this.compiler = compiler;
 
-        let floatTypeName = 'double';
-        if (fp === 128){
-            floatTypeName = 'long double';
+        let floatTypeName = 'long double';
+        if (fp === 64){
+            floatTypeName = 'double';
         }else if (fp === 32){
             floatTypeName = 'float';
         }
@@ -325,7 +325,7 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
         }
 
         // NOTE: 未使用変数は C++ コード上では宣言されないようになっている．
-        //（Scratch3.0 ではデフォルトで "つくったへんすう" という名前の変数が宣言だけされているが，
+        //（Scratch3.0 ではデフォルトで "へんすう" という名前の変数が宣言だけされているが，
         // この名前の変数が C++ コードに毎回登場するのを避けたい（非ascii文字がありGCCでコンパイルできなくなる）
 
         cppSource +=  variableDeclareSource + '\n'
