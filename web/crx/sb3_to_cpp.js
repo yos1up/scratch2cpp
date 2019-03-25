@@ -2,7 +2,9 @@
 let unknownCommandSet;
 let nonAsciiIdentifierSet;
 let usedVariableSet, usedListSet;
+let loopCounterIndex;
 const nameOfAnswerVariable = 'buf_answer';
+
 
 function sb3ProjectJsonToCpp(projectJsonString) {
     /*
@@ -247,6 +249,7 @@ double randUniform(double x, double y){
     nonAsciiIdentifierSet = new Set();
     usedVariableSet = new Set();
     usedListSet = new Set();
+    loopCounterIndex = 0;
 
 
     cppSource += 'Var ' + nameOfAnswerVariable + '; // for "answer"\n\n';
@@ -384,11 +387,13 @@ function getRandomInt(max) {
   return Math.floor(Math.random() * Math.floor(max));
 }
 
+/*
 function randomIdentifierName(){
     var ret = '';
     for(let i=0;i<8;i++) ret += String.fromCharCode('a'.charCodeAt(0) + getRandomInt(26));
     return ret;
 }
+*/
 
 function indent(snippet, num_space){
     /*
@@ -441,7 +446,9 @@ function convertFrom(blockID, allBlocksInfo) {
                     break;
                 case 'control_repeat':
                     innerSnippet = processValueInfo(blockInfo['inputs']['SUBSTACK'], allBlocksInfo);
-                    let cntName = randomIdentifierName();
+                    // let cntName = randomIdentifierName();
+                    let cntName = `cnt_${loopCounterIndex}`;
+                    loopCounterIndex++;
                     snippet = `for (int ${cntName}=0;${cntName}<${processValueInfo(blockInfo['inputs']['TIMES'], allBlocksInfo)}.asNumber();${cntName}++){\n` + indent(innerSnippet, 4) + '}\n';
                     break;
                 case 'control_repeat_until':
