@@ -59,7 +59,8 @@ document.getElementById("file-upload-scratch-project").addEventListener("change"
                         zip.files['project.json'].async('string').then(
                             function (fileData) {
                                 // convert project.json -> cpp
-                                var rslt = sb3ProjectJsonToCpp(fileData);
+                                const converter = new Sb3ToCppConverter();
+                                var rslt = converter.convert(fileData);
                                 var cppSource = rslt[0];
                                 var errorInfos = rslt[1];
                                 for (let errorInfo of errorInfos){
