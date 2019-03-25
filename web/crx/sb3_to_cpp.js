@@ -103,6 +103,7 @@ public:
         if (numericState != UNKNOWN) return numericState == NUMERIC;
         bool numeric = isNumericString(sval);
         numericState = (numeric) ? NUMERIC : STRINGY;
+        // TODO: cache the numerical value!
         return numeric;
     }
     ${floatTypeName} asNumber() const{
