@@ -73,8 +73,6 @@ class Sb3ToCppConverter {
 typedef long long ll;
 using namespace std;
 
-// const double EPS = 1e-8;
-
 class Var{ // NOTE: immutable
 public:
     string sval;
@@ -110,16 +108,8 @@ public:
     ${floatTypeName} asNumber() const{
         if (type == NUMBER) return dval;
         return (isNumeric()) ? atof(sval.c_str()) : 0.0;
+        // TODO: support long double (with strtold)
     }
-    /*
-    static bool isNearInteger(const ${floatTypeName} &x){
-        return fabs(round(x) - x) < EPS;
-        // TODO: allow integer type in Var class
-    }
-    static bool isNearNumber(const ${floatTypeName} &x, const ${floatTypeName} &y){
-        return fabs(x - y) < EPS;
-    }
-    */
     string asString() const{
         if (type == STRING) return sval;
         if (floor(dval) == dval) return to_string((ll)round(dval));
