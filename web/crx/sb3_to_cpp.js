@@ -11,13 +11,20 @@ class Sb3ToCppConverter {
         this.nameOfAnswerVariable = 'buf_answer';
     }
 
-    convert(projectJsonString) {
+    convert(projectJsonString, compiler='GCC') {
         /*
         convert `project.json` string to C++ script string.
 
         Args:
             projectJsonString (str):
                 content of file `project.json`, obtained by unzipping .sb3
+
+            compiler (str, optional):
+                Specify the compiler. The output C++ code can be compiled with it.
+                    'GCC' (default)
+                        All non-ascii characters in identifier names are escaped.
+                    'Clang'
+                        All non-ascii characters in identifier names are not escaped. 
 
         Returns:
             [
@@ -35,6 +42,8 @@ class Sb3ToCppConverter {
                     ]
             ]
         */
+        this.compiler = compiler;
+
 
         let cppSource = `/*
     Converted from Scratch by scratch2cpp (https://github.com/yos1up/scratch2cpp).
@@ -339,23 +348,27 @@ double randUniform(double x, double y){
         */
         this.usedVariableSet.add(name);
         if (Sb3ToCppConverter.hasNonAscii(name)) this.nonAsciiIdentifierSet.add(name);
-        return 'var_' + Sb3ToCppConverter.escapeInvalidCharacter(name);
+        const escapeNonAscii = (this.compiler === 'GCC');
+        return 'var_' + Sb3ToCppConverter.escapeInvalidCharacter(name, escapeNonAscii);
     }
 
     modifyListName(name){
         this.usedListSet.add(name);
         if (Sb3ToCppConverter.hasNonAscii(name)) this.nonAsciiIdentifierSet.add(name);
-        return 'list_' + Sb3ToCppConverter.escapeInvalidCharacter(name);
+        const escapeNonAscii = (this.compiler === 'GCC');
+        return 'list_' + Sb3ToCppConverter.escapeInvalidCharacter(name, escapeNonAscii);
     }
 
     modifyFunctionName(name){
         if (Sb3ToCppConverter.hasNonAscii(name)) this.nonAsciiIdentifierSet.add(name);
-        return 'func_' + Sb3ToCppConverter.escapeInvalidCharacter(name);
+        const escapeNonAscii = (this.compiler === 'GCC');
+        return 'func_' + Sb3ToCppConverter.escapeInvalidCharacter(name, escapeNonAscii);
     }
 
     modifyArgumentName(name){
         if (Sb3ToCppConverter.hasNonAscii(name)) this.nonAsciiIdentifierSet.add(name);
-        return 'arg_' + Sb3ToCppConverter.escapeInvalidCharacter(name);
+        const escapeNonAscii = (this.compiler === 'GCC');
+        return 'arg_' + Sb3ToCppConverter.escapeInvalidCharacter(name, escapeNonAscii);
     }
 
     convertFrom(blockID, allBlocksInfo) {
