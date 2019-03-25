@@ -11,7 +11,7 @@ class Sb3ToCppConverter {
         this.nameOfAnswerVariable = 'buf_answer';
     }
 
-    convert(projectJsonString, compiler='GCC') {
+    convert(projectJsonString, compiler='GCC', fp=128) {
         /*
         convert `project.json` string to C++ script string.
 
@@ -25,6 +25,15 @@ class Sb3ToCppConverter {
                         All non-ascii characters in identifier names are escaped.
                     'Clang'
                         All non-ascii characters in identifier names are not escaped. 
+
+            fp (int, optional):
+                Specify floating-point precision.
+                    128 (default)
+                        The C++ type `long double` is used.
+                    64
+                        The C++ type `double` is used.
+                    32
+                        The C++ type `float` is used.
 
         Returns:
             [
@@ -44,6 +53,12 @@ class Sb3ToCppConverter {
         */
         this.compiler = compiler;
 
+        let floatTypeName = 'double';
+        if (fp === 128){
+            floatTypeName = 'long double';
+        }else if (fp === 32){
+            floatTypeName = 'float';
+        }
 
         let cppSource = `/*
     Converted from Scratch by scratch2cpp (https://github.com/yos1up/scratch2cpp).
@@ -58,12 +73,12 @@ class Sb3ToCppConverter {
 typedef long long ll;
 using namespace std;
 
-const double EPS = 1e-8;
+// const double EPS = 1e-8;
 
 class Var{ // NOTE: immutable
 public:
     string sval;
-    double dval;
+    ${floatTypeName} dval;
     enum VarType {STRING = 0, NUMBER = 1};
     VarType type;
     enum NumericState {UNKNOWN = -1, STRINGY = 0, NUMERIC = 1};
@@ -73,7 +88,7 @@ public:
     Var(string s){
         sval = s; type = STRING; numericState = UNKNOWN;
     }
-    Var(double d){dval = d; type = NUMBER; numericState = NUMERIC;}
+    Var(${floatTypeName} d){dval = d; type = NUMBER; numericState = NUMERIC;}
     Var(const Var &v){
         sval = string(v.sval); dval = v.dval;
         type = v.type; numericState = v.numericState;
@@ -84,7 +99,6 @@ public:
         strtod(s.c_str(), &ep);
         //Scratch 3.0 recognize the string cause underflows or overflows as Numeric
         return NULL != ep && '\\0' == ep[0] && s[0] != '\\0';
-        // TODO: In Scratch '000' is regarded as non-numeric (but here regarded as numeric)
     }
     bool isNumeric() const{
         if (type == NUMBER) return true;
@@ -93,16 +107,16 @@ public:
         numericState = (numeric) ? NUMERIC : STRINGY;
         return numeric;
     }
-    double asNumber() const{
+    ${floatTypeName} asNumber() const{
         if (type == NUMBER) return dval;
         return (isNumeric()) ? atof(sval.c_str()) : 0.0;
     }
     /*
-    static bool isNearInteger(const double &x){
+    static bool isNearInteger(const ${floatTypeName} &x){
         return fabs(round(x) - x) < EPS;
         // TODO: allow integer type in Var class
     }
-    static bool isNearNumber(const double &x, const double &y){
+    static bool isNearNumber(const ${floatTypeName} &x, const ${floatTypeName} &y){
         return fabs(x - y) < EPS;
     }
     */
@@ -232,7 +246,7 @@ ostream& operator << (ostream& os, const VarList& p){
     return os;
 }
 
-double randUniform(double x, double y){
+${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y){
     if (x > y) return randUniform(y, x);
     if (floor(x) == x && floor(y) == y){
         ll xi = (ll)round(x), yi = (ll)round(y);
