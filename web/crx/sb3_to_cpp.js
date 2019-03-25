@@ -364,23 +364,23 @@ function modifyVariableName(name){
     */
     usedVariableSet.add(name);
     if (hasNonAscii(name)) nonAsciiIdentifierSet.add(name);
-    return 'var_' + escapeInvalidAscii(name);
+    return 'var_' + escapeInvalidCharacter(name);
 }
 
 function modifyListName(name){
     usedListSet.add(name);
     if (hasNonAscii(name)) nonAsciiIdentifierSet.add(name);
-    return 'list_' + escapeInvalidAscii(name);
+    return 'list_' + escapeInvalidCharacter(name);
 }
 
 function modifyFunctionName(name){
     if (hasNonAscii(name)) nonAsciiIdentifierSet.add(name);
-    return 'func_' + escapeInvalidAscii(name);
+    return 'func_' + escapeInvalidCharacter(name);
 }
 
 function modifyArgumentName(name){
     if (hasNonAscii(name)) nonAsciiIdentifierSet.add(name);
-    return 'arg_' + escapeInvalidAscii(name);
+    return 'arg_' + escapeInvalidCharacter(name);
 }
 
 function getRandomInt(max) {
@@ -704,16 +704,23 @@ function hasNonAscii(name) {
     return !name.match(/^[\x20-\x7e]*$/);
 }
 
-function escapeInvalidAscii(name){
+function escapeInvalidCharacter(name, escapeNonAscii=false){
     /* 
-        Escape ascii characters invalid for C++ identifier name, as following:
+        (If escapeNonAscii==false)
+            Escape ascii characters invalid for C++ identifier name, as following:
+                ' ' => "_20"
+                '~' => "_7e" (and so on)
+            Non-ascii characters are untouched.
+            The underscore is also escaped, for preventing collisions:
+                '_' => "__"            
 
-        ' ' => "_20"
-        '~' => "_7e" (and so on)
-
-        The underscore is also escaped, for preventing collisions:
-
-        '_' => "__"
+        (If escapeNonAscii==true)
+            Escape ascii characters invalid for C++ identifier name, as well as non-ascii characters:
+                ' ' => "_0020"
+                '~' => "_007e"
+                'あ' => "_3042"
+            The underscore is also escaped, for preventing collisions:
+                '_' => "__"
     */
 
     let ret = '';
