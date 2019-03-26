@@ -60,6 +60,33 @@ class Sb3ToCppConverter {
             floatTypeName = 'float';
         }
 
+
+        /*
+            （dval と sval，および type と numericState についての補足）
+            
+            Var の状態としては以下がありうる：
+
+                - Varが数値でインスタンス化されて，一度も文字列として読み出されていないケース．
+                    dval に有効な値があり，sval には有効な値がない                
+                    type == NUMBER となっている
+
+                - Varが数値でインスタンス化されて，一度以上文字列として読み出されたケース．
+                    dval に有効な値があり，sval にも有効な値がある．                
+                    type == NUMBER となっている
+
+                - Varが文字列でインスタンス化されて，一度も数値として読み出されていないケース．
+                    dval に有効な値がなく，sval に有効な値がある．                
+                    type == STRING となっている
+
+                - Varが文字列でインスタンス化されて，一度以上数値として読み出されたケース．
+                    dval に有効な値があり，sval にも有効な値がある．                
+                    type == STRING となっている
+
+
+                type は廃止しても良い？
+                dvalDefined, svalDefined の bool を持った方が良い？ (undefined)
+        */
+
         let cppSource = `/*
     Converted from Scratch by scratch2cpp (https://github.com/yos1up/scratch2cpp).
 */
