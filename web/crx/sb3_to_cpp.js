@@ -4,6 +4,7 @@ class Sb3ToCppConverter {
     initialize(){
         // for reporting
         this.unknownCommandSet = new Set();
+        this.errorCommandSet = new Set();
         this.nonAsciiIdentifierSet = new Set();
         this.usedVariableSet = new Set();
         this.usedListSet = new Set();
@@ -62,33 +63,25 @@ class Sb3ToCppConverter {
 
 
         /*
-            （dval と sval，および type と numericState についての補足）
+            （dval と sval，および numericState についての補足）
             
             Var の状態としては以下がありうる：
 
                 - Varが数値でインスタンス化されて，一度も文字列として読み出されていないケース．
-                    dval に有効な値があり，sval には有効な値がない                
-                    type == NUMBER となっている
+                    dval に有効な値があり (dvalValid==true)，sval には有効な値がない (svalValid==false)
                     numericState == NUMERIC となっている
 
                 - Varが数値でインスタンス化されて，一度以上文字列として読み出されたケース．
-                    dval に有効な値があり，sval にも有効な値がある．                
-                    type == NUMBER となっている
+                    dval に有効な値があり，sval にも有効な値がある．
                     numericState == NUMERIC となっている
 
                 - Varが文字列でインスタンス化されて，一度も数値として読み出されていないケース．
-                    dval に有効な値がなく，sval に有効な値がある．                
-                    type == STRING となっている
+                    dval に有効な値がなく，sval に有効な値がある．
                     numericState == UNKNOWN となっている
 
                 - Varが文字列でインスタンス化されて，一度以上数値として読み出されたケース．
-                    dval に有効な値があり，sval にも有効な値がある．                
-                    type == STRING となっている
+                    dval に有効な値があり，sval にも有効な値がある．
                     numericState == NUMERIC or STRINGY となっている
-
-                type や numericState は廃止しても良い？
-
-                dvalDefined, svalDefined の bool を持った方が良い？ (undefined)
         */
 
         let cppSource = `/*
@@ -106,46 +99,67 @@ using namespace std;
 
 class Var{ // NOTE: immutable
 public:
-    string sval;
-    ${floatTypeName} dval;
-    enum VarType {STRING = 0, NUMBER = 1};
-    VarType type;
+    mutable string sval;
+    mutable ${floatTypeName} dval;
     enum NumericState {UNKNOWN = -1, STRINGY = 0, NUMERIC = 1};
     mutable NumericState numericState;
+    mutable bool svalValid, dvalValid; // TODO: initialize at here?
 
-    Var(){sval = ""; type = STRING; numericState = STRINGY;} // represent null?
-    Var(string s){
-        sval = s; type = STRING; numericState = UNKNOWN;
+    Var(){
+        *this = Var("");
     }
-    Var(${floatTypeName} d){dval = d; type = NUMBER; numericState = NUMERIC;}
+    Var(string s){
+        sval = s;
+        svalValid = true; dvalValid = false;
+        numericState = UNKNOWN;
+    }
+    Var(${floatTypeName} d){
+        dval = d;
+        svalValid = false; dvalValid = true;
+        numericState = NUMERIC;
+    }
     Var(const Var &v){
         sval = string(v.sval); dval = v.dval;
-        type = v.type; numericState = v.numericState;
+        svalValid = v.svalValid; dvalValid = v.dvalValid;
+        numericState = v.numericState;
     }
-    static bool isNumericString(const string &s) {
+    void fillDval() const{
+        if (dvalValid) return;
+        double d;
+        bool numeric = isNumericString(sval, &d);
+        if (numeric){
+            numericState = NUMERIC;
+            dval = d;
+        }else{
+            numericState = STRINGY;
+            dval = 0.0;
+        }        
+        dvalValid = true;
+    }
+    static bool isNumericString(const string &s, double *ptr) {
         char* ep;
-        //cause side-effect: errno can be ERANGE after calling strtod
-        strtod(s.c_str(), &ep);
-        //Scratch 3.0 recognize the string cause underflows or overflows as Numeric
+        // cause side-effect: errno can be ERANGE after calling strtod
+        *ptr = strtod(s.c_str(), &ep);
+        // TODO: support long double (with strtold)
+        // Scratch 3.0 recognize the string cause underflows or overflows as Numeric
         return NULL != ep && '\\0' == ep[0] && s[0] != '\\0';
     }
     bool isNumeric() const{
-        if (type == NUMBER) return true;
-        if (numericState != UNKNOWN) return numericState == NUMERIC;
-        bool numeric = isNumericString(sval);
-        numericState = (numeric) ? NUMERIC : STRINGY;
-        // TODO: cache the numerical value!
-        return numeric;
-    }
+        fillDval();
+        return numericState == NUMERIC;
+    }    
+    void fillSval() const{
+        if (svalValid) return;
+        sval = (floor(dval) == dval) ? to_string((ll)dval) : to_string(dval);
+        svalValid = true;
+    }       
     ${floatTypeName} asNumber() const{
-        if (type == NUMBER) return dval;
-        return (isNumeric()) ? atof(sval.c_str()) : 0.0;
-        // TODO: support long double (with strtold)
-    }
+        fillDval();
+        return dval;
+    } 
     string asString() const{
-        if (type == STRING) return sval;
-        if (floor(dval) == dval) return to_string((ll)round(dval));
-        return to_string(dval);
+        fillSval();
+        return sval;
     }
     Var operator+(const Var &y) const{
         return Var(this->asNumber() + y.asNumber());
@@ -192,6 +206,7 @@ istream& operator >> (istream& is, Var& p){
     string s; is >> s; p = Var(s);
     return is;
 }
+
 
 Var letterOf(Var index, Var sourceString){
     /* index: 1-origined */
@@ -372,6 +387,9 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
         }
         if (this.nonAsciiIdentifierSet.size > 0){
             errorInfos.push({'code':4, 'message':Array.from(this.nonAsciiIdentifierSet).join(',')});
+        }
+        if (this.errorCommandSet.size > 0){
+            errorInfos.push({'code':5, 'message':Array.from(this.errorCommandSet).join(',')});
         }
         return [cppSource, errorInfos];
     }
@@ -641,7 +659,6 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
                         value = [];
                         const argIDs = JSON.parse(blockInfo['mutation']['argumentids']);
                         for(let i=0;i<argIDs.length;i++){
-                            console.log(blockInfo['inputs'][argIDs[i]]);
                             value.push(this.processValueInfo(blockInfo['inputs'][argIDs[i]], allBlocksInfo));
                         }
                         snippet = funcName + '(' + value.join(', ') + ');\n';
@@ -650,7 +667,7 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
                         procProtoBlockID = blockInfo['inputs']['custom_block'][1];
                         funcName = this.modifyFunctionName(allBlocksInfo[procProtoBlockID]['mutation']['proccode'].split(' ')[0]);
                         argNames = JSON.parse(allBlocksInfo[procProtoBlockID]['mutation']['argumentnames']);
-                        argNames = argNames.map(this.modifyArgumentName);
+                        argNames = argNames.map(this.modifyArgumentName.bind(this));
                         funcSignature = [funcName].concat(argNames);
                         break;
                     // case 'procedures_prototype': // procedures_definition の中で処理されるためここでは記述不要．
@@ -666,6 +683,7 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
                 console.log(`blockID: ${blockID}`);
                 console.log(allBlocksInfo[blockID]);
                 snippet = `/* ERROR: ${allBlocksInfo[blockID]['opcode']} */`;
+                this.errorCommandSet.add(allBlocksInfo[blockID]['opcode']);
             }
 
             //「次の処理」が存在する場合
