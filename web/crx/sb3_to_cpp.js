@@ -183,7 +183,7 @@ public:
     bool operator<(const Var &y) const{
         if (this->isNumeric() && y.isNumeric()){
             return this->asNumber() < y.asNumber();
-        }// compare as number if both can be interpreted as numeric
+        } // compare as number if both can be interpreted as numeric
         return this->asString() < y.asString();
     }
     bool operator>(const Var &y) const{
@@ -192,7 +192,7 @@ public:
     bool operator==(const Var &y) const{
         if (this->isNumeric() && y.isNumeric()){
             return this->asNumber() == y.asNumber();
-        }// compare as numeric if both are numeric
+        } // compare as numeric if both are numeric
         return this->asString() == y.asString();
     }
     friend ostream& operator << (ostream& os, const Var& p);
@@ -722,7 +722,7 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
             if not interpretable, return the string double-quoted.
         */
         if (typeof obj == 'string'){
-            if ($.isNumeric(obj)){
+            /*if ($.isNumeric(obj)){
                 // ここで obj === "0431" の時，文字列 0431 が返るとマズい
                 // C++ はリテラル "0431" を八進数として解釈するが，Scratch は十進数として解釈する．
                 // 一方 Scratch でも C++ でもリテラル "0xFF" は 255 と解釈される．
@@ -732,7 +732,8 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
                 return obj;
             }else{
                 return '"' + obj + '"';
-            }
+            }*/
+            return '"' + obj + '"';
         }else{
             return '' + obj; 
         }
