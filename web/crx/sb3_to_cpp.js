@@ -69,21 +69,25 @@ class Sb3ToCppConverter {
                 - Varが数値でインスタンス化されて，一度も文字列として読み出されていないケース．
                     dval に有効な値があり，sval には有効な値がない                
                     type == NUMBER となっている
+                    numericState == NUMERIC となっている
 
                 - Varが数値でインスタンス化されて，一度以上文字列として読み出されたケース．
                     dval に有効な値があり，sval にも有効な値がある．                
                     type == NUMBER となっている
+                    numericState == NUMERIC となっている
 
                 - Varが文字列でインスタンス化されて，一度も数値として読み出されていないケース．
                     dval に有効な値がなく，sval に有効な値がある．                
                     type == STRING となっている
+                    numericState == UNKNOWN となっている
 
                 - Varが文字列でインスタンス化されて，一度以上数値として読み出されたケース．
                     dval に有効な値があり，sval にも有効な値がある．                
                     type == STRING となっている
+                    numericState == NUMERIC or STRINGY となっている
 
+                type や numericState は廃止しても良い？
 
-                type は廃止しても良い？
                 dvalDefined, svalDefined の bool を持った方が良い？ (undefined)
         */
 
