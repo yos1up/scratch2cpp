@@ -96,6 +96,12 @@ document.getElementById("file-upload-scratch-project").addEventListener("change"
                                                 'ja':'ちゅうい: へんすうめいに アスキーもじ いがいが ふくまれるため、Clang コンパイラ (C++14 (Clang 3.8.0)) をせんたくしてください！'
                                             }[lang];
                                             break;
+                                        case 5:
+                                            errorMessage = {
+                                                'en':'ERROR: Some errors occured while converting the following blocks!',
+                                                'ja':'エラー: いかのブロックをへんかんちゅうに、エラーがはっせいしました！'
+                                            }[lang] + '\n' + errorInfo['message'];
+                                            break;
                                     }
                                     window.alert(errorMessage);
                                 }

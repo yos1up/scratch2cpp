@@ -483,6 +483,7 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
                     case 'control_stop':
                         snippet = 'return 0;\n';
                         break;
+                    // case 'control_wait': // TODO
                     case 'event_whenflagclicked':
                         funcSignature = ['main'];
                         break;
@@ -546,10 +547,12 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
                         snippet = `(${listName}.itemNumOfList(${value}) != 0)`;
                         break;
                     case 'looks_say':
+                    case 'looks_sayforsecs':
                         value = this.processValueInfo(blockInfo['inputs']['MESSAGE'], allBlocksInfo);
                         snippet = `cout << ${value} << endl;\n`;
                         break;
                     case 'looks_think':
+                    case 'looks_thinkforsecs':
                         value = this.processValueInfo(blockInfo['inputs']['MESSAGE'], allBlocksInfo);
                         snippet = `cerr << ${value} << endl;\n`;
                         break;
