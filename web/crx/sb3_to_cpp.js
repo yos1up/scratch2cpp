@@ -385,9 +385,11 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
         if (this.unknownCommandSet.size > 0){
             errorInfos.push({'code':1, 'message':Array.from(this.unknownCommandSet).join(',')});
         }
+        /*
         if (this.nonAsciiIdentifierSet.size > 0){
             errorInfos.push({'code':4, 'message':Array.from(this.nonAsciiIdentifierSet).join(',')});
         }
+        */
         if (this.errorCommandSet.size > 0){
             errorInfos.push({'code':5, 'message':Array.from(this.errorCommandSet).join(',')});
         }
@@ -725,18 +727,22 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
             if not interpretable, return the string double-quoted.
         */
         if (typeof obj == 'string'){
-            /*if ($.isNumeric(obj)){
-                // ここで obj === "0431" の時，文字列 0431 が返るとマズい
-                // C++ はリテラル "0431" を八進数として解釈するが，Scratch は十進数として解釈する．
-                // 一方 Scratch でも C++ でもリテラル "0xFF" は 255 と解釈される．
+            /*
+                例えば 000 と Scratch の入力枠に入力されたものを
+                Var(000) と変換するのは不味い．（0が3ケタあるという情報が失われたので．）
 
-                // use Number() ?
+                そこで，ダブルクオーテーションで囲って Var("000") とするのが良いのであるが，
+                一方で全ての 1 が Var("1") になるのは嬉しくない
+                （例えばループカウンタが1増えるごとに "1" から 1 への変換が起こるのが嫌）
 
+                そこで「標準的な記法」で書かれた数値文字列のみ，ダブルクオートなしで扱うことにする．
+            */
+            if ($.isNumeric(obj) && '' + Number(obj) === obj){ // 標準的な記法かのチェック
+                // $.isNumeric を行うのは，NaN や Infinity を弾きたいため
                 return obj;
             }else{
                 return '"' + obj + '"';
-            }*/
-            return '"' + obj + '"';
+            }
         }else{
             return '' + obj; 
         }
