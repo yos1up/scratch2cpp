@@ -91,8 +91,6 @@ English version is [here](#english).
 
 (every operator is supported.)
 
-* Make sure that names of variables consist of alphabets and digits!
-
 ### Data
 
 (every manipulation of data is supported.)
