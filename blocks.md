@@ -11,7 +11,11 @@ English version is [here](#english).
 
 * `... という` : ひょうじゅんしゅつりょく に 1ぎょう しゅつりょくします
 
+* `... と ... びょういう` : うえと おなじです（びょうすうは むしされます）
+
 * `... とかんがえる` : ひょうじゅんエラーしゅつりょく に 1ぎょう しゅつりょくします
+
+* `... と ... びょうかんがえる` : うえと おなじです（びょうすうは むしされます）
 
 ### せいぎょ
 
@@ -41,21 +45,9 @@ English version is [here](#english).
 
 （すべて つかえます）
 
-* へんすうの なまえには アルファベットと すうじだけを つかって ください！ （[日本語の変数名を使いたい方へ](#japanesename)）
-
 ### そのた
 
 * `ブロックをつくる` : しょりのまとまりを ていぎできます
-
-
-<a name="japanesename"></a>
-## 日本語の変数名を使いたい方へ
-
-変数名に日本語が含まれる Scratch プロジェクトを変換すると，
-出力されるC++ソースにも日本語の変数名が含まれ，その結果， GCC コンパイラでコンパイルできません（コンパイルエラーが生じます）．
-そのような時は，以下の方法でコンパイルをすることができます．
-
-* コンパイラを GCC から Clang に変更し（2018年9月現在の AtCoder の場合，「言語」を "C++14 (Clang 3.8.0)" に変更する），コンパイルを行う．
 
 
 <a name="english"></a>
@@ -69,7 +61,11 @@ English version is [here](#english).
 
 * `say ...` : output a line to standard output
 
+* `say ... for ... secs` : same as above (secs is ignored)
+
 * `think ...` : output a line to standard error
+
+* `think ... for ... secs` : same as above (secs is ignored)
 
 ### Control
 
