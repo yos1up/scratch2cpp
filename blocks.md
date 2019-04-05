@@ -41,6 +41,8 @@ English version is [here](#english).
 
 （すべて つかえます）
 
+* Scratch では おおもじ と こもじ は くべつされませんが C++ では くべつされます！（"APPLE" と "apple" は ことなります）
+
 ### データ
 
 （すべて つかえます）
@@ -90,6 +92,8 @@ English version is [here](#english).
 ### Operators
 
 (every operator is supported.)
+
+* Note that Scratch is case-insensitive, but C++ is case-sensitive (that is, "APPLE" is not equal to "apple".)
 
 ### Data
 
