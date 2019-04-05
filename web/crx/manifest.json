@@ -17,7 +17,7 @@
     "content_scripts": [
         {
             "matches": ["https://atcoder.jp/contests/*/submit*", "https://atcoder.jp/contests/*/tasks/*", "https://atcoder.jp/contests/*/custom_test*"],
-            "js": ["lib/jquery-3.3.1.min.js", "lib/Stuk-jszip-9fb481a/dist/jszip.js", "lib/Stuk-jszip-9fb481a/dist/jszip.min.js", "sb2_to_cpp.js", "sb3_to_cpp.js", "myscript.js"]
+            "js": ["lib/jquery-3.3.1.min.js", "lib/Stuk-jszip-9fb481a/dist/jszip.js", "lib/Stuk-jszip-9fb481a/dist/jszip.min.js", "sb2_to_cpp.js", "sb3_to_cpp.js", "main.js"]
         }
     ]
 }
