@@ -43,6 +43,8 @@ English version is [here](#english).
 
 * Scratch では おおもじ と こもじ は くべつされませんが C++ では くべつされます！（"APPLE" と "apple" は ことなります）
 
+* じょうけんを あらわす ろっかっけいの ブロックは かならず ろっかっけいの あなに いれるように してください！（まるい あなには いれないで）
+
 ### データ
 
 （すべて つかえます）
@@ -94,6 +96,8 @@ English version is [here](#english).
 (every operator is supported.)
 
 * Note that Scratch is case-insensitive, but C++ is case-sensitive (that is, "APPLE" is not equal to "apple".)
+
+* Make sure that hexagonal blocks (condition blocks) are put in hexagonal holes only (not circular ones).
 
 ### Data
 
