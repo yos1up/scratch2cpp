@@ -13,7 +13,7 @@ JavaScript コードが含まれています．
 2. ローカルで動作する，コード変換ツール． Scratch 2.0 プロジェクトファイル (.sb2) を C++ ソース (.cpp) に変換できます．（Python3 製です．）
 
 
-1 については， **以下の記述は読まずに `./web/crx/` の階層の README をご覧ください．**
+**1 については， 以下の記述は読まずに，[こちら](/web/crx/README.md)をご覧ください．**
 
 2 については，以下の記述をご覧ください． 
 
@@ -25,7 +25,7 @@ git clone https://github.com/yos1up/scratch2cpp.git
 
 ## 依存ライブラリ
 
-* python3
+* Python3
 
 ## Scratch 2.0 でプログラミングコンテストに参加する方法
 
@@ -67,9 +67,9 @@ It contains JavaScript code which converts Scratch 3.0 project file (.sb3) into 
 
 2. Code converting tool which works offline. You can convert Scratch 2.0 project file (.sb2) into C++ source code (.cpp)． （developed in Python3）
 
-For 1, please read README on `./web/crx/` directory.
+**For 1, please see [here](/web/crx/README.md).**
 
-For 2, 
+For 2, please read the instruction below.
 
 
 ## Installation
@@ -80,7 +80,7 @@ git clone https://github.com/yos1up/scratch2cpp.git
 
 ## Dependency
 
-* python3
+* Python3
 
 ## How to participate in programming contests in Scratch 2.0
 
