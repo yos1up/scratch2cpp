@@ -1,7 +1,7 @@
 
 class Sb3ToCppConverter {
 
-    initialize(){
+    initialize() {
         // for reporting
         this.unknownCommandSet = new Set();
         this.errorCommandSet = new Set();
@@ -12,7 +12,7 @@ class Sb3ToCppConverter {
         this.nameOfAnswerVariable = 'buf_answer';
     }
 
-    convert(projectJsonString, compiler='GCC', fp=128) {
+    convert(projectJsonString, compiler = 'GCC', fp = 128) {
         /*
         convert `project.json` string to C++ script string.
 
@@ -54,11 +54,21 @@ class Sb3ToCppConverter {
         */
         this.compiler = compiler;
 
+        // fp == 128
         let floatTypeName = 'long double';
-        if (fp === 64){
+        let fmodVariantName = 'fmodl';
+        let strtodVariantName = 'strtold';
+        let floorVariantName = 'floorl';
+        if (fp === 64) {
             floatTypeName = 'double';
-        }else if (fp === 32){
+            fmodVariantName = 'fmod';
+            strtodVariantName = 'strtod';
+            floorVariantName = 'floor';
+        } else if (fp === 32) {
             floatTypeName = 'float';
+            fmodVariantName = 'fmod';
+            strtodVariantName = 'strtod';
+            floorVariantName = 'floor';
         }
 
 
@@ -125,7 +135,7 @@ public:
     }
     void fillDval() const{
         if (dvalValid) return;
-        double d;
+        ${floatTypeName} d;
         bool numeric = isNumericString(sval, &d);
         if (numeric){
             numericState = NUMERIC;
@@ -136,11 +146,10 @@ public:
         }        
         dvalValid = true;
     }
-    static bool isNumericString(const string &s, double *ptr) {
+    static bool isNumericString(const string &s, ${floatTypeName} *ptr) {
         char* ep;
         // cause side-effect: errno can be ERANGE after calling strtod
-        *ptr = strtod(s.c_str(), &ep);
-        // TODO: support long double (with strtold)
+        *ptr = ${strtodVariantName}(s.c_str(), &ep);
         // Scratch 3.0 recognize the string cause underflows or overflows as Numeric
         return NULL != ep && '\\0' == ep[0] && s[0] != '\\0';
     }
@@ -150,7 +159,7 @@ public:
     }    
     void fillSval() const{
         if (svalValid) return;
-        sval = (floor(dval) == dval) ? to_string((ll)dval) : to_string(dval);
+        sval = (${floorVariantName}(dval) == dval) ? to_string((ll)dval) : to_string(dval);
         svalValid = true;
     }       
     ${floatTypeName} asNumber() const{
@@ -178,7 +187,7 @@ public:
         return Var(this->asNumber() / y.asNumber());
     }
     Var operator%(const Var &y) const{
-        return Var(fmod(this->asNumber(), y.asNumber()));
+        return Var(${fmodVariantName}(this->asNumber(), y.asNumber()));
     }
     bool operator<(const Var &y) const{
         if (this->isNumeric() && y.isNumeric()){
@@ -324,7 +333,7 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
 
 
         let mainCnt = 0;
-        for (let blockID in blocks){
+        for (let blockID in blocks) {
             switch (blocks[blockID]['opcode']) {
                 case 'event_whenflagclicked':
                     mainCnt++;
@@ -332,9 +341,9 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
                     let rslt = this.convertFrom(blockID, blocks);
                     let snippet = rslt[0];
                     let funcSignature = rslt[1];
-                    let args = funcSignature.slice(1).map(v => 'const Var &'+v).join(', ');
-                    funcPrototypeSource += 'int '+funcSignature[0]+'('+args+');\n'; 
-                    funcContentSource += 'int '+funcSignature[0]+'('+args+'){\n'; 
+                    let args = funcSignature.slice(1).map(v => 'const Var &' + v).join(', ');
+                    funcPrototypeSource += 'int ' + funcSignature[0] + '(' + args + ');\n';
+                    funcContentSource += 'int ' + funcSignature[0] + '(' + args + '){\n';
                     funcContentSource += Sb3ToCppConverter.indent(snippet, 4);
                     funcContentSource += Sb3ToCppConverter.indent('return 0;\n', 4);
                     funcContentSource += '}\n\n';
@@ -365,38 +374,38 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
         //（Scratch3.0 ではデフォルトで "へんすう" という名前の変数が宣言だけされているが，
         // この名前の変数が C++ コードに毎回登場するのを避けたい（非ascii文字がありGCCでコンパイルできなくなる）
 
-        cppSource +=  variableDeclareSource + '\n'
-                    + listDeclareSource + '\n'
-                    + funcPrototypeSource + '\n'
-                    + funcContentSource;
+        cppSource += variableDeclareSource + '\n'
+            + listDeclareSource + '\n'
+            + funcPrototypeSource + '\n'
+            + funcContentSource;
 
         // AtCoder 上での「バイト数」を 100 の倍数に正規化する処理
         //（「提出一覧」から scratch2cpp で生成されたコードを発見しやすくするための処置です）
         cppSource = Sb3ToCppConverter.makeByteLengthNice(cppSource);
 
-        if (!validAsSB3){
-            errorInfos.push({'code':-1, 'message':'invalid as SB3'});
+        if (!validAsSB3) {
+            errorInfos.push({ 'code': -1, 'message': 'invalid as SB3' });
             cppSource = '';
-        } else if (mainCnt === 0){
-            errorInfos.push({'code':2, 'message':'no entry point'});
-        } else if (mainCnt > 1){
-            errorInfos.push({'code':3, 'message':'multiple entry points'});
+        } else if (mainCnt === 0) {
+            errorInfos.push({ 'code': 2, 'message': 'no entry point' });
+        } else if (mainCnt > 1) {
+            errorInfos.push({ 'code': 3, 'message': 'multiple entry points' });
         }
-        if (this.unknownCommandSet.size > 0){
-            errorInfos.push({'code':1, 'message':Array.from(this.unknownCommandSet).join(',')});
+        if (this.unknownCommandSet.size > 0) {
+            errorInfos.push({ 'code': 1, 'message': Array.from(this.unknownCommandSet).join(',') });
         }
         /*
         if (this.nonAsciiIdentifierSet.size > 0){
             errorInfos.push({'code':4, 'message':Array.from(this.nonAsciiIdentifierSet).join(',')});
         }
         */
-        if (this.errorCommandSet.size > 0){
-            errorInfos.push({'code':5, 'message':Array.from(this.errorCommandSet).join(',')});
+        if (this.errorCommandSet.size > 0) {
+            errorInfos.push({ 'code': 5, 'message': Array.from(this.errorCommandSet).join(',') });
         }
         return [cppSource, errorInfos];
     }
 
-    modifyVariableName(name){
+    modifyVariableName(name) {
         /*
         variable name in Scratch is arbitrary,
         so there's need to change it so that
@@ -408,20 +417,20 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
         return 'var_' + Sb3ToCppConverter.escapeInvalidCharacter(name, escapeNonAscii);
     }
 
-    modifyListName(name){
+    modifyListName(name) {
         this.usedListSet.add(name);
         if (Sb3ToCppConverter.hasNonAscii(name)) this.nonAsciiIdentifierSet.add(name);
         const escapeNonAscii = (this.compiler === 'GCC');
         return 'list_' + Sb3ToCppConverter.escapeInvalidCharacter(name, escapeNonAscii);
     }
 
-    modifyFunctionName(name){
+    modifyFunctionName(name) {
         if (Sb3ToCppConverter.hasNonAscii(name)) this.nonAsciiIdentifierSet.add(name);
         const escapeNonAscii = (this.compiler === 'GCC');
         return 'func_' + Sb3ToCppConverter.escapeInvalidCharacter(name, escapeNonAscii);
     }
 
-    modifyArgumentName(name){
+    modifyArgumentName(name) {
         if (Sb3ToCppConverter.hasNonAscii(name)) this.nonAsciiIdentifierSet.add(name);
         const escapeNonAscii = (this.compiler === 'GCC');
         return 'arg_' + Sb3ToCppConverter.escapeInvalidCharacter(name, escapeNonAscii);
@@ -452,7 +461,7 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
 
                 let variableName, listName, conditionBlockID, substackBlockID, innerSnippet, value, value2,
                     procProtoBlockID, funcName, argNames;
-                
+
                 switch (opcode) {
                     case 'argument_reporter_string_number':
                         snippet = this.modifyArgumentName(blockInfo['fields']['VALUE'][0]);
@@ -521,7 +530,7 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
                     case 'data_itemnumoflist': // .sb3 で新登場
                         listName = this.modifyListName(blockInfo['fields']['LIST'][0]);
                         value = this.processValueInfo(blockInfo['inputs']['ITEM'], allBlocksInfo);
-                        snippet = `Var(${listName}.itemNumOfList(${value}))`;                   
+                        snippet = `Var(${listName}.itemNumOfList(${value}))`;
                         break;
                     case 'data_addtolist':
                         listName = this.modifyListName(blockInfo['fields']['LIST'][0]);
@@ -590,10 +599,10 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
                     case 'operator_mathop':
                         value = this.processValueInfo(blockInfo['inputs']['NUM'], allBlocksInfo);
                         let opName = blockInfo['fields']['OPERATOR'][0];
-                        if (opName === '10 ^'){
+                        if (opName === '10 ^') {
                             snippet = `Var(pow(10.0, ${value}.asNumber()))`;
                         } else {
-                            let dic = {'abs':'fabs', 'ceiling':'ceil', 'ln':'log', 'log':'log10', 'e ^':'exp'};
+                            let dic = { 'abs': 'fabs', 'ceiling': 'ceil', 'ln': 'log', 'log': 'log10', 'e ^': 'exp' };
                             if (opName in dic) opName = dic[opName];
                             snippet = `Var(${opName}(${value}.asNumber()))`;
                         }
@@ -612,11 +621,11 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
                         value = this.processValueInfo(blockInfo['inputs']['OPERAND1'], allBlocksInfo);
                         value2 = this.processValueInfo(blockInfo['inputs']['OPERAND2'], allBlocksInfo);
                         snippet = `(${value} && ${value2})`;
-                        break; 
+                        break;
                     case 'operator_not':
                         value = this.processValueInfo(blockInfo['inputs']['OPERAND'], allBlocksInfo);
                         snippet = `(!${value})`;
-                        break; 
+                        break;
                     case 'operator_join':
                         value = this.processValueInfo(blockInfo['inputs']['STRING1'], allBlocksInfo);
                         value2 = this.processValueInfo(blockInfo['inputs']['STRING2'], allBlocksInfo);
@@ -663,7 +672,7 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
                         funcName = this.modifyFunctionName(blockInfo['mutation']['proccode'].split(' ')[0]);
                         value = [];
                         const argIDs = JSON.parse(blockInfo['mutation']['argumentids']);
-                        for(let i=0;i<argIDs.length;i++){
+                        for (let i = 0; i < argIDs.length; i++) {
                             value.push(this.processValueInfo(blockInfo['inputs'][argIDs[i]], allBlocksInfo));
                         }
                         snippet = funcName + '(' + value.join(', ') + ');\n';
@@ -706,7 +715,7 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
         switch (valueInfo[0]) {
             case 3: // other block, or variable
             case 2: // CONDITION だとこのパターンもある？
-                if (typeof valueInfo[1] === 'string'){ // other block
+                if (typeof valueInfo[1] === 'string') { // other block
                     return this.convertFrom(valueInfo[1], allBlocksInfo)[0];
                 } else { // variable
                     return this.modifyVariableName(valueInfo[1][1]);
@@ -715,10 +724,10 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
                 return `Var(${Sb3ToCppConverter.processLiteral(valueInfo[1][1])})`;
             default:
                 console.log(`UNKNOWN VALUE TYPE: ${valueInfo[0]}`);
-        }  
+        }
     }
 
-    static processLiteral(obj){
+    static processLiteral(obj) {
         /*
             obj <str/int/float>
             returns <str>
@@ -726,7 +735,7 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
             else if [obj] is interpretable as numerical value, return the value stringified.
             if not interpretable, return the string double-quoted.
         */
-        if (typeof obj == 'string'){
+        if (typeof obj == 'string') {
             /*
                 例えば 000 と Scratch の入力枠に入力されたものを
                 Var(000) と変換するのは不味い．（0が3ケタあるという情報が失われたので．）
@@ -737,16 +746,16 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
 
                 そこで「標準的な記法」で書かれた数値文字列のみ，ダブルクオートなしで扱うことにする．
             */
-            if ($.isNumeric(obj) && '' + Number(obj) === obj){ // 標準的な記法かのチェック
+            if ($.isNumeric(obj) && '' + Number(obj) === obj) { // 標準的な記法かのチェック
                 // $.isNumeric を行うのは，NaN や Infinity を弾きたいため
                 return obj;
-            }else{
+            } else {
                 return '"' + obj + '"';
             }
-        }else{
-            return '' + obj; 
+        } else {
+            return '' + obj;
         }
-    }    
+    }
 
     /*
     static getRandomInt(max) {
@@ -759,7 +768,7 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
     }
     */
 
-    static indent(snippet, num_space){
+    static indent(snippet, num_space) {
         /*
         Args:
             snippet <str> : every row in it has return code.
@@ -769,10 +778,10 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
         */
         if (snippet == '') return '';
         var lines = snippet.split('\n');
-        if (lines[lines.length-1] == '') lines.pop();
-        var spaces = Array(num_space+1).join(' ');
+        if (lines[lines.length - 1] == '') lines.pop();
+        var spaces = Array(num_space + 1).join(' ');
         return lines.map(line => spaces + line + '\n').join('');
-    }    
+    }
 
 
     static hasNonAscii(name) {
@@ -780,7 +789,7 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
         return !name.match(/^[\x20-\x7e]*$/);
     }
 
-    static escapeInvalidCharacter(name, escapeNonAscii=false){
+    static escapeInvalidCharacter(name, escapeNonAscii = false) {
         /* 
             (If escapeNonAscii==false)
                 Escape ascii characters invalid for C++ identifier name, as following:
@@ -800,19 +809,19 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
         */
 
         let ret = '';
-        for(let c of name){
-            if (c === '_'){
+        for (let c of name) {
+            if (c === '_') {
                 ret += '__';
             } else {
                 const code = c.charCodeAt(0);
-                if (escapeNonAscii){
-                    if (('0' <= c && c <= '9') || ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z')){
+                if (escapeNonAscii) {
+                    if (('0' <= c && c <= '9') || ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z')) {
                         ret += c;
                     } else {
                         ret += '_' + ('000' + code.toString(16)).substr(-4);
                     }
-                }else{
-                    if (('0' <= c && c <= '9') || ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z') || 256 <= code){
+                } else {
+                    if (('0' <= c && c <= '9') || ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z') || 256 <= code) {
                         ret += c;
                     } else {
                         ret += '_' + ('0' + code.toString(16)).substr(-2);
@@ -844,7 +853,7 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
         return len;
     }
 
-    static makeByteLengthNice(src){
+    static makeByteLengthNice(src) {
         /*
             与えられた文字列 src に対して以下の処理を施します
             ・改行コードを \r\n に変更する．（AtCoder の web から提出するとソース中の改行コードが \r\n になる関係で）
@@ -852,7 +861,7 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
         */
         src = src.replace(new RegExp('\r\n', 'g'), '\n').replace(new RegExp('\n', 'g'), `\r\n`);
         const padSize = (-Sb3ToCppConverter.getUTF8Length(src) % 100 + 100) % 100;
-        for(let i=0;i<padSize;i++) src += ' ';
+        for (let i = 0; i < padSize; i++) src += ' ';
         return src;
     }
 }
