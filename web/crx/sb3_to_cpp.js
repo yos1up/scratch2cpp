@@ -341,7 +341,7 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
                     let rslt = this.convertFrom(blockID, blocks);
                     let snippet = rslt[0];
                     let funcSignature = rslt[1];
-                    let args = funcSignature.slice(1).map(v => 'const Var &' + v).join(', ');
+                    let args = funcSignature.slice(1).map(v => 'const Var ' + v).join(', ');
                     funcPrototypeSource += 'int ' + funcSignature[0] + '(' + args + ');\n';
                     funcContentSource += 'int ' + funcSignature[0] + '(' + args + '){\n';
                     funcContentSource += Sb3ToCppConverter.indent(snippet, 4);
