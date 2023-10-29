@@ -6,7 +6,7 @@ The description in English is provided [below Japanese one](#eng).
 
 ここには，以下の 2 つのものがあります:
 
-1. AtCoder に Scratch 3.0 で参加できるようになる Chrome 拡張 Scratcher's AtCoder のソースコード．
+1. AtCoder に Scratch 3.0 で参加できるようになる Chrome 拡張 `Scratcher's AtCoder` のソースコード．
    Scratch 3.0 プロジェクトファイル (.sb3) を C++ ソース (.cpp) に変換する
    JavaScript コードが含まれています．
 
@@ -26,7 +26,7 @@ The description in English is provided [below Japanese one](#eng).
 
 There are two things here:
 
-1. Chrome extension with which you can participate in AtCoder with Scratch 3.0.
+1. Codes of the Chrome extension `Scratcher's AtCoder`, with which you can participate in AtCoder with Scratch 3.0.
    It contains JavaScript code which converts Scratch 3.0 project file (.sb3) into C++ source code (.cpp).
 
 2. Code converting tool which works offline. You can convert Scratch 2.0 project file (.sb2) into C++ source code (.cpp)． （developed in Python3）
