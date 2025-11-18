@@ -1,3 +1,12 @@
+// Helper function to replace jQuery's $.isNumeric()
+function isNumeric(value) {
+    // Returns true if value is a finite number or a string that can be coerced to a finite number
+    // Matches jQuery's $.isNumeric() behavior
+    return (typeof value === 'number' || typeof value === 'string') &&
+           value !== '' &&
+           !isNaN(value) &&
+           isFinite(value);
+}
 
 class Sb3ToCppConverter {
 
@@ -746,8 +755,8 @@ ${floatTypeName} randUniform(const ${floatTypeName} x, const ${floatTypeName} y)
 
                 そこで「標準的な記法」で書かれた数値文字列のみ，ダブルクオートなしで扱うことにする．
             */
-            if ($.isNumeric(obj) && '' + Number(obj) === obj) { // 標準的な記法かのチェック
-                // $.isNumeric を行うのは，NaN や Infinity を弾きたいため
+            if (isNumeric(obj) && '' + Number(obj) === obj) { // 標準的な記法かのチェック
+                // isNumeric を行うのは，NaN や Infinity を弾きたいため
                 return obj;
             } else {
                 return '"' + obj + '"';

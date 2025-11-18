@@ -15,7 +15,12 @@ var div = document.getElementsByClassName("editor-buttons")[0];
 if (typeof div !== 'undefined' && div !== null){
     // create a button to navigate to Scratch online editor
     var buttonText = {'ja':'Scratch 3.0<br>オンラインエディタ', 'en':'Scratch 3.0<br>online editor'}[lang];
-    div.insertAdjacentHTML('beforeend', `<button type="button" class="btn btn-default btn-sm " style="background-color: orange; color: white; width: 140px;" onclick="window.open('https://scratch.mit.edu/projects/editor/');">` + buttonText + `</button>`);
+    div.insertAdjacentHTML('beforeend', `<button id="btn-scratch-online-editor" type="button" class="btn btn-default btn-sm " style="background-color: orange; color: white; width: 140px;">` + buttonText + `</button>`);
+
+    // Add event listener for the button (CSP compliant)
+    document.getElementById("btn-scratch-online-editor").onclick = function(){
+        window.open('https://scratch.mit.edu/projects/editor/');
+    };
     
     // create and place the button for upload
     buttonText = {'ja':'Scratch 3.0<br>プロジェクトをロード', 'en':'Load Scratch 3.0<br>project'}[lang];
@@ -124,9 +129,13 @@ document.getElementById("file-upload-scratch-project").addEventListener("change"
 
 
                                     // paste to rich editor
+                                    // Inject code into page context to access the editor object
                                     var script = document.createElement("script");
-                                    script.textContent = `$('[name="sourceCode"]').data('editor').setValue(document.getElementById("converted_source").value);`;
-                                    document.body.appendChild(script);
+                                    script.src = chrome.runtime.getURL('inject_editor.js');
+                                    (document.head || document.documentElement).appendChild(script);
+                                    script.onload = function() {
+                                        script.remove();
+                                    };
 
                                 }
 

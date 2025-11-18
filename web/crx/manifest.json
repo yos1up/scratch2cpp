@@ -3,21 +3,30 @@
     "short_name": "ScratchersAC",
     "description" : "for Scratchers who want to compete in AtCoder",
     "version": "1.4.0",
-    "manifest_version": 2,
+    "manifest_version": 3,
     "homepage_url": "https://github.com/yos1up/scratch2cpp/tree/master/web/crx",
     "icons": {
         "16": "icon16.png",
         "48": "icon48.png",
         "128": "icon128.png"
     },
-    "browser_action": {
+    "action": {
       "default_popup": "popup.html",
       "default_icon": "icon.png"
+    },
+    "content_security_policy": {
+        "extension_pages": "default-src 'self'; script-src 'self'; object-src 'self'"
     },
     "content_scripts": [
         {
             "matches": ["https://atcoder.jp/contests/*/submit*", "https://atcoder.jp/contests/*/tasks/*", "https://atcoder.jp/contests/*/custom_test*"],
-            "js": ["lib/jquery-3.3.1.min.js", "lib/Stuk-jszip-9fb481a/dist/jszip.js", "lib/Stuk-jszip-9fb481a/dist/jszip.min.js", "sb2_to_cpp.js", "sb3_to_cpp.js", "main.js"]
+            "js": ["lib/Stuk-jszip-9fb481a/dist/jszip.js", "sb2_to_cpp.js", "sb3_to_cpp.js", "main.js"]
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": ["inject_editor.js"],
+            "matches": ["https://atcoder.jp/*"]
         }
     ]
 }

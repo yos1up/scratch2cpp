@@ -1,3 +1,13 @@
+// Helper function to replace jQuery's $.isNumeric()
+function isNumeric(value) {
+    // Returns true if value is a finite number or a string that can be coerced to a finite number
+    // Matches jQuery's $.isNumeric() behavior
+    return (typeof value === 'number' || typeof value === 'string') &&
+           value !== '' &&
+           !isNaN(value) &&
+           isFinite(value);
+}
+
 // for reporting
 var unknown_command_set;
 var name_of_answer_variable = 'buf_answer';
@@ -279,13 +289,13 @@ function process_literal(obj){
     if not interpretable, return the string double-quoted.
     */
     if (typeof obj == 'string'){
-        if ($.isNumeric(obj)){
+        if (isNumeric(obj)){
             return obj;
         }else{
             return '"' + obj + '"';
         }
     }else{
-        return '' + obj; 
+        return '' + obj;
     }
 }
 
